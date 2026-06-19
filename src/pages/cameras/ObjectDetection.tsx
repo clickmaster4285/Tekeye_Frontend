@@ -1,5 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Scan, Package, AlertTriangle, MapPin, Server, Video, Search, Loader2, FilterX } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react"
+import {
+  Scan,
+  Package,
+  AlertTriangle,
+  MapPin,
+  Server,
+  Video,
+  Search,
+  Loader2,
+  FilterX,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Database,
+} from "lucide-react"
 import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MlSystemStatus } from "@/components/cameras/ml-system-status"
+import { cn } from "@/lib/utils"
 import {
   fetchCameras,
   fetchDetectionEvents,
@@ -29,7 +46,7 @@ import {
   type SiteRecord,
 } from "@/lib/cameras-api"
 
-const PAGE_SIZE = 25
+const PAGE_SIZE = 100
 const ALL = "all"
 
 function formatTime(iso: string): string {
@@ -46,49 +63,78 @@ function formatTime(iso: string): string {
   }
 }
 
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100)
+  return (
+    <div className="flex min-w-[72px] items-center gap-2">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all",
+            pct >= 80 ? "bg-emerald-500" : pct >= 50 ? "bg-[#3b82f6]" : "bg-amber-500"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-8 text-right text-xs font-medium tabular-nums">{pct}%</span>
+    </div>
+  )
+}
+
 function DetectionRow({ row }: { row: DetectionEvent }) {
   return (
-    <TableRow>
-      <TableCell className="font-medium whitespace-nowrap">{formatTime(row.created_at)}</TableCell>
+    <TableRow
+      className={cn(
+        "transition-colors hover:bg-muted/50",
+        row.is_alert && "bg-amber-50/60 dark:bg-amber-950/15"
+      )}
+    >
+      <TableCell className="whitespace-nowrap font-medium text-sm">{formatTime(row.created_at)}</TableCell>
       <TableCell>
-        <div className="flex items-start gap-1.5">
-          <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{row.site_name || "—"}</div>
-            <div className="text-xs text-muted-foreground">{row.site_code}</div>
+        <div className="flex items-start gap-2">
+          <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#3b82f6]" />
+          <div className="min-w-0">
+            <div className="truncate font-medium text-sm">{row.site_name || "—"}</div>
+            <div className="text-[11px] text-muted-foreground">{row.site_code}</div>
           </div>
         </div>
       </TableCell>
       <TableCell>
-        <div className="flex items-start gap-1.5">
-          <Server className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{row.nvr_name || "—"}</div>
-            <div className="text-xs text-muted-foreground font-mono">{row.nvr_ip}</div>
+        <div className="flex items-start gap-2">
+          <Server className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <div className="truncate font-medium text-sm">{row.nvr_name || "—"}</div>
+            <div className="truncate font-mono text-[11px] text-muted-foreground">{row.nvr_ip}</div>
           </div>
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant="outline">CH {row.channel}</Badge>
+        <Badge variant="outline" className="font-mono text-xs">
+          CH {row.channel}
+        </Badge>
       </TableCell>
       <TableCell>
-        <div className="flex items-start gap-1.5">
-          <Video className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-          <div>
-            <div className="font-medium">{row.camera_name}</div>
-            <div className="text-xs text-muted-foreground">{row.camera_code}</div>
+        <div className="flex items-start gap-2">
+          <Video className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <div className="truncate font-medium text-sm">{row.camera_name}</div>
+            <div className="text-[11px] text-muted-foreground">{row.camera_code}</div>
           </div>
         </div>
       </TableCell>
       <TableCell className="text-sm">{row.zone || "—"}</TableCell>
       <TableCell>
-        <Badge className="bg-[#3b82f6]/90 text-xs">{row.purpose_label}</Badge>
+        <Badge className="bg-[#3b82f6]/90 text-[11px]">{row.purpose_label}</Badge>
       </TableCell>
-      <TableCell>{row.class_name}</TableCell>
-      <TableCell>{row.label}</TableCell>
-      <TableCell>{(row.confidence * 100).toFixed(0)}%</TableCell>
       <TableCell>
-        <Badge variant={row.is_alert ? "destructive" : "outline"}>
+        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{row.class_name}</code>
+      </TableCell>
+      <TableCell className="font-medium text-sm">{row.label}</TableCell>
+      <TableCell>
+        <ConfidenceBar value={row.confidence} />
+      </TableCell>
+      <TableCell>
+        <Badge variant={row.is_alert ? "destructive" : "secondary"} className="text-[11px]">
           {row.is_alert ? "Alert" : "Normal"}
         </Badge>
       </TableCell>
@@ -96,12 +142,42 @@ function DetectionRow({ row }: { row: DetectionEvent }) {
   )
 }
 
+function StatCard({
+  title,
+  value,
+  hint,
+  icon: Icon,
+  accent,
+}: {
+  title: string
+  value: string | number
+  hint: string
+  icon: ComponentType<{ className?: string }>
+  accent: string
+}) {
+  return (
+    <Card className="overflow-hidden border-0 shadow-sm ring-1 ring-border/60">
+      <CardContent className="flex items-center gap-4 p-5">
+        <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", accent)}>
+          <Icon className="h-6 w-6 text-white" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold tabular-nums">{value}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{hint}</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function ObjectDetectionPage() {
   const [summary, setSummary] = useState<DetectionSummary | null>(null)
   const [events, setEvents] = useState<DetectionEvent[]>([])
   const [totalCount, setTotalCount] = useState(0)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(false)
+  const [totalPages, setTotalPages] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [filtersAppliedOnServer, setFiltersAppliedOnServer] = useState(false)
   const [sites, setSites] = useState<SiteRecord[]>([])
   const [nvrs, setNvrs] = useState<NvrRecord[]>([])
   const [allCameras, setAllCameras] = useState<CameraRecord[]>([])
@@ -117,10 +193,6 @@ export default function ObjectDetectionPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-
-  const loadMoreRef = useRef<HTMLDivElement | null>(null)
-  const fetchingRef = useRef(false)
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350)
@@ -192,6 +264,36 @@ export default function ObjectDetectionPage() {
     dateTo !== "" ||
     debouncedSearch !== ""
 
+  const activeFilterChips = useMemo(() => {
+    const chips: string[] = []
+    if (debouncedSearch) chips.push(`Class/label: ${debouncedSearch}`)
+    if (siteFilter !== ALL) chips.push(`Site: ${siteFilter}`)
+    if (nvrFilter !== ALL) {
+      const nvr = nvrs.find((n) => String(n.id) === nvrFilter)
+      chips.push(`NVR: ${nvr?.name ?? nvrFilter}`)
+    }
+    if (cameraFilter !== ALL) {
+      const cam = allCameras.find((c) => String(c.id) === cameraFilter)
+      chips.push(`Camera: ${cam?.name ?? cameraFilter}`)
+    }
+    if (channelFilter !== ALL) chips.push(`Channel: ${channelFilter}`)
+    if (zoneFilter !== ALL) chips.push(`Zone: ${zoneFilter}`)
+    if (dateFrom) chips.push(`From: ${dateFrom}`)
+    if (dateTo) chips.push(`To: ${dateTo}`)
+    return chips
+  }, [
+    debouncedSearch,
+    siteFilter,
+    nvrFilter,
+    cameraFilter,
+    channelFilter,
+    zoneFilter,
+    dateFrom,
+    dateTo,
+    nvrs,
+    allCameras,
+  ])
+
   const loadSummary = useCallback(() => {
     fetchDetectionSummary()
       .then(setSummary)
@@ -199,44 +301,33 @@ export default function ObjectDetectionPage() {
   }, [])
 
   const fetchPage = useCallback(
-    async (pageNum: number, append: boolean) => {
-      if (fetchingRef.current) return
-      fetchingRef.current = true
-      if (append) setLoadingMore(true)
-      else setLoading(true)
-
+    async (pageNum: number) => {
+      setLoading(true)
       try {
         const data = await fetchDetectionEvents({ ...queryParams, page: pageNum })
+        setEvents(data.results)
         setTotalCount(data.count)
-        setPage(data.page)
-        setHasMore(data.page < data.total_pages)
-        setEvents((prev) => (append ? [...prev, ...data.results] : data.results))
+        setTotalPages(data.total_pages)
+        setCurrentPage(data.page)
+        setFiltersAppliedOnServer(Boolean(data.filters_applied))
       } catch {
-        if (!append) {
-          setEvents([])
-          setTotalCount(0)
-          setHasMore(false)
-        }
+        setEvents([])
+        setTotalCount(0)
+        setTotalPages(0)
+        setCurrentPage(1)
+        setFiltersAppliedOnServer(false)
       } finally {
-        fetchingRef.current = false
         setLoading(false)
-        setLoadingMore(false)
       }
     },
     [queryParams]
   )
 
-  const resetAndLoad = useCallback(() => {
-    setEvents([])
-    setPage(1)
-    setHasMore(false)
-    void fetchPage(1, false)
-  }, [fetchPage])
-
-  const loadMore = useCallback(() => {
-    if (!hasMore || loading || loadingMore) return
-    void fetchPage(page + 1, true)
-  }, [hasMore, loading, loadingMore, fetchPage, page])
+  const goToPage = (pageNum: number) => {
+    if (pageNum < 1 || pageNum > totalPages || pageNum === currentPage || loading) return
+    void fetchPage(pageNum)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   const clearFilters = () => {
     setSiteFilter(ALL)
@@ -285,249 +376,270 @@ export default function ObjectDetectionPage() {
   }, [loadSummary])
 
   useEffect(() => {
-    resetAndLoad()
-  }, [resetAndLoad])
+    setCurrentPage(1)
+    void fetchPage(1)
+  }, [fetchPage])
 
-  useEffect(() => {
-    const node = loadMoreRef.current
-    if (!node || !hasMore) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) loadMore()
-      },
-      { root: null, rootMargin: "200px", threshold: 0 }
-    )
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [hasMore, loadMore])
+  const pageStart = totalCount === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1
+  const pageEnd = Math.min(currentPage * PAGE_SIZE, totalCount)
 
   const emptyMessage = debouncedSearch
-    ? `No detections match class/label "${debouncedSearch}". Try smog, person, truck…`
+    ? `No detections match class/label "${debouncedSearch}" across the database.`
     : hasActiveFilters
-      ? "No detections match the current filters."
+      ? "No detections match your filters across the full database."
       : "No saved detections yet. Open live camera feeds with ML enabled to record readings."
 
   return (
     <ModulePageLayout
       title="Object Detection"
-      description="Saved YOLO detections — NLP search on class & label, plus site/NVR/camera filters."
+      description="AI detection log with NLP search and database-wide filters."
       breadcrumbs={[{ label: "WMS" }, { label: "Object Detection" }]}
     >
       <div className="grid gap-6">
         <MlSystemStatus />
+
         <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Detections Today</CardTitle>
-              <Scan className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary?.detections_today ?? "—"}</div>
-              <p className="text-xs text-muted-foreground mt-1">Saved from live ML scans</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Classes Tracked</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary?.classes_tracked ?? "—"}</div>
-              <p className="text-xs text-muted-foreground mt-1">Unique object types today</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Alerts</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary?.alerts_today ?? "—"}</div>
-              <p className="text-xs text-muted-foreground mt-1">Alert-class detections</p>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="Detections Today"
+            value={summary?.detections_today ?? "—"}
+            hint="Saved from live ML scans"
+            icon={Scan}
+            accent="bg-gradient-to-br from-[#3b82f6] to-[#2563eb]"
+          />
+          <StatCard
+            title="Classes Tracked"
+            value={summary?.classes_tracked ?? "—"}
+            hint="Unique object types today"
+            icon={Package}
+            accent="bg-gradient-to-br from-violet-500 to-violet-600"
+          />
+          <StatCard
+            title="Alerts"
+            value={summary?.alerts_today ?? "—"}
+            hint="Alert-class detections"
+            icon={AlertTriangle}
+            accent="bg-gradient-to-br from-amber-500 to-orange-600"
+          />
         </div>
-        <Card className="w-full min-w-0">
-          <CardHeader className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle>Detection Log</CardTitle>
+
+        <Card className="overflow-hidden border-0 shadow-sm ring-1 ring-border/60">
+          <CardHeader className="space-y-4 border-b bg-muted/20 pb-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Database className="h-5 w-5 text-[#3b82f6]" />
+                  Detection Log
+                </CardTitle>
                 <CardDescription>
-                  NLP search on class &amp; label · {PAGE_SIZE} rows per page · scroll for more
+                  {PAGE_SIZE} records per page · filters query the{" "}
+                  <strong>full database</strong>, not just the current page
                 </CardDescription>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={resetAndLoad} disabled={loading}>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => void fetchPage(currentPage)} disabled={loading}>
                   Refresh
                 </Button>
                 {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-muted-foreground">
                     <FilterX className="h-4 w-4" />
-                    Clear filters
+                    Clear all
                   </Button>
                 )}
               </div>
             </div>
 
-            <div className="relative w-full max-w-xl">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="NLP search class or label… e.g. smog, person, truck"
-                className="pl-9"
+                placeholder="NLP search on class or label — smog, person, truck…"
+                className="h-11 border-border/80 bg-background pl-10 shadow-sm"
                 aria-label="Search class and label"
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Searches detection <strong>class</strong> and <strong>label</strong> with synonyms &amp; fuzzy spelling
-              </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 rounded-lg border bg-muted/30 p-3">
-              <div className="min-w-0 space-y-1.5">
-                <Label className="text-xs">Site</Label>
-                <Select value={siteFilter} onValueChange={handleSiteChange}>
-                  <SelectTrigger className="h-9 w-full min-w-0 bg-background">
-                    <SelectValue placeholder="All sites" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All sites</SelectItem>
-                    {sites.map((s) => (
-                      <SelectItem key={s.id} value={s.code}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="rounded-xl border border-border/80 bg-background p-4 shadow-sm">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <SlidersHorizontal className="h-4 w-4 text-[#3b82f6]" />
+                Filters
+                <span className="text-xs font-normal text-muted-foreground">(server-side · entire database)</span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Site</Label>
+                  <Select value={siteFilter} onValueChange={handleSiteChange}>
+                    <SelectTrigger className="h-9 w-full min-w-0 bg-muted/30">
+                      <SelectValue placeholder="All sites" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL}>All sites</SelectItem>
+                      {sites.map((s) => (
+                        <SelectItem key={s.id} value={s.code}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">NVR</Label>
+                  <Select value={nvrFilter} onValueChange={handleNvrChange} disabled={filteredNvrs.length === 0}>
+                    <SelectTrigger className="h-9 w-full min-w-0 bg-muted/30">
+                      <SelectValue placeholder="All NVRs" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL}>All NVRs</SelectItem>
+                      {filteredNvrs.map((n) => (
+                        <SelectItem key={n.id} value={String(n.id)}>
+                          <span className="truncate">{n.name}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Camera</Label>
+                  <Select value={cameraFilter} onValueChange={setCameraFilter}>
+                    <SelectTrigger className="h-9 w-full min-w-0 bg-muted/30">
+                      <SelectValue placeholder="All cameras" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL}>All cameras</SelectItem>
+                      {cameraOptions.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          <span className="truncate">{c.name} · CH{c.channel}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Channel</Label>
+                  <Select
+                    value={channelFilter}
+                    onValueChange={setChannelFilter}
+                    disabled={cameraFilter !== ALL}
+                  >
+                    <SelectTrigger className="h-9 w-full min-w-0 bg-muted/30">
+                      <SelectValue placeholder="All channels" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL}>All channels</SelectItem>
+                      {channelOptions.map((ch) => (
+                        <SelectItem key={ch} value={String(ch)}>
+                          CH {ch}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Zone</Label>
+                  <Select value={zoneFilter} onValueChange={setZoneFilter}>
+                    <SelectTrigger className="h-9 w-full min-w-0 bg-muted/30">
+                      <SelectValue placeholder="All zones" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL}>All zones</SelectItem>
+                      {zoneOptions.map((z) => (
+                        <SelectItem key={z} value={z}>
+                          {z}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Date from</Label>
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-9 w-full min-w-0 bg-muted/30"
+                  />
+                </div>
+
+                <div className="min-w-0 space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Date to</Label>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-9 w-full min-w-0 bg-muted/30"
+                  />
+                </div>
               </div>
 
-              <div className="min-w-0 space-y-1.5">
-                <Label className="text-xs">NVR</Label>
-                <Select value={nvrFilter} onValueChange={handleNvrChange} disabled={filteredNvrs.length === 0}>
-                  <SelectTrigger className="h-9 w-full min-w-0 bg-background">
-                    <SelectValue placeholder="All NVRs" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All NVRs</SelectItem>
-                    {filteredNvrs.map((n) => (
-                      <SelectItem key={n.id} value={String(n.id)}>
-                        {n.name} ({n.ip_address})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="min-w-0 space-y-1.5">
-                <Label className="text-xs">Camera</Label>
-                <Select value={cameraFilter} onValueChange={setCameraFilter}>
-                  <SelectTrigger className="h-9 w-full min-w-0 bg-background">
-                    <SelectValue placeholder="All cameras" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All cameras</SelectItem>
-                    {cameraOptions.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        <span className="truncate">{c.name} · CH{c.channel}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="min-w-0 space-y-1.5">
-                <Label className="text-xs">Channel</Label>
-                <Select value={channelFilter} onValueChange={setChannelFilter} disabled={cameraFilter !== ALL}>
-                  <SelectTrigger className="h-9 w-full min-w-0 bg-background">
-                    <SelectValue placeholder="All channels" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All channels</SelectItem>
-                    {channelOptions.map((ch) => (
-                      <SelectItem key={ch} value={String(ch)}>
-                        CH {ch}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="min-w-0 space-y-1.5">
-                <Label className="text-xs">Zone</Label>
-                <Select value={zoneFilter} onValueChange={setZoneFilter}>
-                  <SelectTrigger className="h-9 w-full min-w-0 bg-background">
-                    <SelectValue placeholder="All zones" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL}>All zones</SelectItem>
-                    {zoneOptions.map((z) => (
-                      <SelectItem key={z} value={z}>
-                        {z}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="min-w-0 space-y-1.5">
-                <Label className="text-xs">Date from</Label>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-9 w-full min-w-0 bg-background"
-                />
-              </div>
-
-              <div className="min-w-0 space-y-1.5">
-                <Label className="text-xs">Date to</Label>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="h-9 w-full min-w-0 bg-background"
-                />
-              </div>
+              {activeFilterChips.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
+                  {activeFilterChips.map((chip) => (
+                    <Badge key={chip} variant="secondary" className="text-[11px] font-normal">
+                      {chip}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
           </CardHeader>
-          <CardContent className="w-full min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-              {debouncedSearch ? (
-                <span>
-                  NLP match on class/label: <strong>{debouncedSearch}</strong>
-                </span>
-              ) : (
-                <span>Most recent detections first</span>
-              )}
+
+          <CardContent className="space-y-4 p-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/10 px-4 py-2.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Loading…
+                  </>
+                ) : filtersAppliedOnServer || hasActiveFilters ? (
+                  <>
+                    <Database className="h-3.5 w-3.5" />
+                    <strong className="text-foreground">{totalCount.toLocaleString()}</strong> matches in database
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-3.5 w-3.5" />
+                    <strong className="text-foreground">{totalCount.toLocaleString()}</strong> total records
+                  </>
+                )}
+              </span>
               {totalCount > 0 && (
                 <span>
-                  Showing {events.length} of {totalCount.toLocaleString()}
+                  Page {currentPage} of {totalPages} · rows {pageStart}–{pageEnd}
                 </span>
               )}
             </div>
-            <div className="w-full overflow-x-auto rounded-lg border">
+
+            <div className="w-full overflow-x-auto px-4 pb-2">
               <Table className="min-w-[1200px]">
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Site</TableHead>
-                    <TableHead>NVR</TableHead>
-                    <TableHead>Channel</TableHead>
-                    <TableHead>Camera</TableHead>
-                    <TableHead>Zone</TableHead>
-                    <TableHead>Purpose</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Label</TableHead>
-                    <TableHead>Confidence</TableHead>
-                    <TableHead>Alert</TableHead>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Time</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Site</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">NVR</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Ch</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Camera</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Zone</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Purpose</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Class</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Label</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Confidence</TableHead>
+                    <TableHead className="sticky top-0 z-10 bg-background/95 backdrop-blur">Alert</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {events.length === 0 && !loading ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                        {emptyMessage}
+                      <TableCell colSpan={11} className="py-16 text-center">
+                        <div className="mx-auto max-w-md space-y-2 text-muted-foreground">
+                          <Search className="mx-auto h-8 w-8 opacity-40" />
+                          <p className="text-sm">{emptyMessage}</p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -535,8 +647,8 @@ export default function ObjectDetectionPage() {
                   )}
                   {loading && events.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                      <TableCell colSpan={11} className="py-16 text-center">
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-[#3b82f6]" />
                       </TableCell>
                     </TableRow>
                   )}
@@ -544,22 +656,58 @@ export default function ObjectDetectionPage() {
               </Table>
             </div>
 
-            <div ref={loadMoreRef} className="flex min-h-10 items-center justify-center py-2">
-              {loadingMore && (
-                <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading more…
-                </span>
-              )}
-              {!loading && !loadingMore && hasMore && events.length > 0 && (
-                <Button variant="ghost" size="sm" onClick={loadMore}>
-                  Load more
-                </Button>
-              )}
-              {!hasMore && events.length > 0 && !loading && (
-                <span className="text-xs text-muted-foreground">All records loaded</span>
-              )}
-            </div>
+            {totalPages > 1 && (
+              <div className="flex flex-col items-center justify-between gap-3 border-t bg-muted/10 px-4 py-3 sm:flex-row">
+                <p className="text-xs text-muted-foreground">
+                  {PAGE_SIZE} records per page · use arrows to browse all database results
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={currentPage <= 1 || loading}
+                    onClick={() => goToPage(1)}
+                    aria-label="First page"
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={currentPage <= 1 || loading}
+                    onClick={() => goToPage(currentPage - 1)}
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[120px] px-2 text-center text-sm font-medium tabular-nums">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={currentPage >= totalPages || loading}
+                    onClick={() => goToPage(currentPage + 1)}
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={currentPage >= totalPages || loading}
+                    onClick={() => goToPage(totalPages)}
+                    aria-label="Last page"
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
