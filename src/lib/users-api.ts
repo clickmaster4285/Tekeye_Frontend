@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders, getStoredToken } from "@/lib/api";
+=======
+import { API_BASE_URL, getAuthHeaders, getStoredToken } from "@/lib/api";
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 import { locationLabel, LOCATION_OPTIONS } from "@/lib/locations";
 
 export type ApiUser = {
@@ -70,7 +74,11 @@ export type UpdateUserPayload = UserProfilePayload & {
 
 export { LOCATION_OPTIONS, locationLabel };
 
+<<<<<<< HEAD
 const USERS_ENDPOINT = apiUrl("users/");
+=======
+const USERS_ENDPOINT = `${API_BASE_URL}/api/users/`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 async function parseApiError(res: Response): Promise<string> {
   try {

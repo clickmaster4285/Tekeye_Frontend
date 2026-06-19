@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders, getAuthHeadersFormData } from "@/lib/api";
+=======
+import { API_BASE_URL, getAuthHeaders, getAuthHeadersFormData } from "@/lib/api";
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type AttendanceRecord = {
   id: number;
@@ -11,7 +15,11 @@ export type AttendanceRecord = {
   source?: string;
 };
 
+<<<<<<< HEAD
 const ATTENDANCE_ENDPOINT = apiUrl("attendance/");
+=======
+const ATTENDANCE_ENDPOINT = `${API_BASE_URL}/api/attendance/`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export async function fetchAttendance(): Promise<AttendanceRecord[]> {
   const response = await fetch(ATTENDANCE_ENDPOINT, {
@@ -106,7 +114,11 @@ export async function recognizeAndMarkAttendance(
   form.append("image", imageFile);
   form.append("auto_mark", options?.autoMark !== false ? "true" : "false");
   if (options?.threshold != null) form.append("threshold", String(options.threshold));
+<<<<<<< HEAD
   const response = await fetch(apiUrl("attendance/recognize/"), {
+=======
+  const response = await fetch(`${API_BASE_URL}/api/attendance/recognize/`, {
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
     method: "POST",
     headers: getAuthHeadersFormData(),
     body: form,

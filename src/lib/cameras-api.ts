@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders, getStoredToken, resolveApiUrl } from "@/lib/api";
+=======
+import { API_BASE_URL, getAuthHeaders, getStoredToken } from "@/lib/api";
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type CameraPurpose =
   | "surveillance"
@@ -103,6 +107,7 @@ export type DetectionEvent = {
   id: number;
   camera: number;
   camera_code: string;
+<<<<<<< HEAD
   name: string;
   site_code: string;
   site_name: string;
@@ -112,6 +117,14 @@ export type DetectionEvent = {
   zone: string;
   purpose: CameraPurpose;
   purpose_label: string;
+=======
+  camera_name: string;
+  site_code?: string;
+  site_name?: string;
+  nvr_name?: string;
+  channel?: number;
+  zone?: string;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   class_name: string;
   label: string;
   confidence: number;
@@ -126,6 +139,33 @@ export type DetectionSummary = {
   alerts_today: number;
 };
 
+<<<<<<< HEAD
+=======
+export type DetectionEventsPage = {
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  results: DetectionEvent[];
+};
+
+export type DetectionEventsQuery = {
+  page?: number;
+  page_size?: number;
+  camera?: number;
+  site?: string;
+  site_id?: number;
+  nvr?: number;
+  channel?: number;
+  zone?: string;
+  date_from?: string;
+  date_to?: string;
+  q?: string;
+  is_alert?: boolean;
+  class_name?: string;
+};
+
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 export type StreamCameraMeta = {
   id: number;
   code: string;
@@ -143,7 +183,11 @@ export type StreamCameraMeta = {
   ml_live_stream_path?: string;
 };
 
+<<<<<<< HEAD
 const API = apiUrl("");
+=======
+const API = `${API_BASE_URL}/api`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 function parseList<T>(data: unknown): T[] {
   if (Array.isArray(data)) return data as T[];
@@ -166,10 +210,18 @@ function formatApiError(err: unknown, fallback: string): string {
 }
 
 export function getCameraMjpegUrl(streamPath: string): string {
+<<<<<<< HEAD
   const path = streamPath.startsWith("/") ? streamPath : `/${streamPath}`;
   const token = getStoredToken();
   const qs = token ? `?token=${encodeURIComponent(token)}` : "";
   return `${resolveApiUrl(path)}${qs}`;
+=======
+  const base = API_BASE_URL.replace(/\/$/, "");
+  const path = streamPath.startsWith("/") ? streamPath : `/${streamPath}`;
+  const token = getStoredToken();
+  const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `${base}${path}${qs}`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 }
 
 export function getMlLiveMjpegUrl(camera: Pick<CameraRecord, "ml_live_stream_path">): string | null {
@@ -179,10 +231,18 @@ export function getMlLiveMjpegUrl(camera: Pick<CameraRecord, "ml_live_stream_pat
 }
 
 export function getPreviewMjpegUrl(nvrId: number, channel: number): string {
+<<<<<<< HEAD
   const token = getStoredToken();
   const params = new URLSearchParams({ nvr_id: String(nvrId), channel: String(channel) });
   if (token) params.set("token", token);
   return `${apiUrl("cameras/preview/mjpeg/")}?${params}`;
+=======
+  const base = API_BASE_URL.replace(/\/$/, "");
+  const token = getStoredToken();
+  const params = new URLSearchParams({ nvr_id: String(nvrId), channel: String(channel) });
+  if (token) params.set("token", token);
+  return `${base}/api/cameras/preview/mjpeg/?${params}`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 }
 
 // ——— Sites ———
@@ -328,6 +388,7 @@ export async function deleteCamera(id: number): Promise<void> {
 }
 
 export async function fetchMlLiveDetections(cameraId: number): Promise<{
+<<<<<<< HEAD
   camera_id: number;
   camera_code: string;
   name: string;
@@ -339,6 +400,8 @@ export async function fetchMlLiveDetections(cameraId: number): Promise<{
   zone: string;
   purpose: CameraPurpose;
   purpose_label: string;
+=======
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   detections: Array<{
     class_name: string;
     label: string;
@@ -347,7 +410,10 @@ export async function fetchMlLiveDetections(cameraId: number): Promise<{
     alert?: boolean;
   }>;
   count: number;
+<<<<<<< HEAD
   saved_count: number;
+=======
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 }> {
   const res = await fetch(`${API}/cameras/${cameraId}/ml-live/detections/`, {
     headers: getAuthHeaders(),
@@ -379,6 +445,7 @@ export async function detectOnCamera(cameraId: number): Promise<{
   return data;
 }
 
+<<<<<<< HEAD
 export type DetectionEventsPage = {
   count: number;
   page: number;
@@ -419,6 +486,28 @@ export async function fetchDetectionEvents(
   if (params.dateTo?.trim()) searchParams.set("date_to", params.dateTo.trim());
   if (params.search?.trim()) searchParams.set("q", params.search.trim());
   const res = await fetch(`${API}/cameras/detection-events/?${searchParams}`, {
+=======
+export async function fetchDetectionEventsPage(
+  query: DetectionEventsQuery = {}
+): Promise<DetectionEventsPage> {
+  const params = new URLSearchParams();
+  if (query.page != null) params.set("page", String(query.page));
+  if (query.page_size != null) params.set("page_size", String(query.page_size));
+  if (query.camera != null) params.set("camera", String(query.camera));
+  if (query.site) params.set("site", query.site);
+  if (query.site_id != null) params.set("site_id", String(query.site_id));
+  if (query.nvr != null) params.set("nvr", String(query.nvr));
+  if (query.channel != null) params.set("channel", String(query.channel));
+  if (query.zone) params.set("zone", query.zone);
+  if (query.date_from) params.set("date_from", query.date_from);
+  if (query.date_to) params.set("date_to", query.date_to);
+  if (query.q?.trim()) params.set("q", query.q.trim());
+  if (query.class_name?.trim()) params.set("class_name", query.class_name.trim());
+  if (query.is_alert === true) params.set("is_alert", "true");
+  if (query.is_alert === false) params.set("is_alert", "false");
+
+  const res = await fetch(`${API}/cameras/detection-events/?${params}`, {
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -426,6 +515,19 @@ export async function fetchDetectionEvents(
   return res.json();
 }
 
+<<<<<<< HEAD
+=======
+/** @deprecated Use fetchDetectionEventsPage for server-side pagination and filters. */
+export async function fetchDetectionEvents(limit = 50, cameraId?: number): Promise<DetectionEvent[]> {
+  const page = await fetchDetectionEventsPage({
+    page: 1,
+    page_size: limit,
+    camera: cameraId,
+  });
+  return page.results;
+}
+
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 export async function fetchDetectionSummary(): Promise<DetectionSummary> {
   const res = await fetch(`${API}/cameras/detection-summary/`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error("Failed to load detection summary");

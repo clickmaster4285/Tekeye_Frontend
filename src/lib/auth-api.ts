@@ -1,12 +1,20 @@
 import type { AuthUser } from "@/lib/auth";
+<<<<<<< HEAD
 import { apiUrl } from "@/lib/api";
+=======
+import { API_BASE_URL } from "@/lib/api";
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type LoginResponse = {
   token: string;
   user: AuthUser;
 };
 
+<<<<<<< HEAD
 const LOGIN_URL = apiUrl("auth/login/");
+=======
+const LOGIN_URL = `${API_BASE_URL}/api/auth/login/`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const res = await fetch(LOGIN_URL, {

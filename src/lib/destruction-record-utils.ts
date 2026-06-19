@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 import { mediaUrl } from "@/lib/api"
+=======
+import { API_BASE_URL } from "@/lib/api"
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 import type { MemoDistributionRecord } from "@/lib/memo-distribution-api"
 
 export function videoUrlForEntry(entry: { url?: string; path?: string }): string | null {
   if (entry.url) return entry.url
+<<<<<<< HEAD
   if (entry.path) return mediaUrl(entry.path)
+=======
+  if (entry.path) return `${API_BASE_URL}/media/${entry.path.replace(/^\/+/, "")}`
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   return null
 }
 
