@@ -46,6 +46,9 @@ const DEPARTMENT_OPTIONS = [
   { value: "PROCUREMENT", label: "Procurement" },
   { value: "ENFORCEMENT", label: "Enforcement" },
   { value: "CUSTOMS", label: "Customs" },
+  { value: "CUSTOMS (ENF)", label: "Customs (Enforcement)" },
+  { value: "CUSTOMS (INTELLIGENCE)", label: "Customs (Intelligence)" },
+  { value: "TekEye HR", label: "TekEye HR" },
 ]
 
 const EMPLOYMENT_TYPES = [
@@ -54,6 +57,10 @@ const EMPLOYMENT_TYPES = [
   { value: "contract", label: "Contract" },
   { value: "intern", label: "Intern" },
   { value: "probation", label: "Probation" },
+  { value: "Permanent", label: "Permanent" },
+  { value: "Contract", label: "Contract (Government)" },
+  { value: "Deputation", label: "Deputation" },
+  { value: "Daily Wage", label: "Daily Wage" },
 ]
 
 const BPS_OPTIONS = [

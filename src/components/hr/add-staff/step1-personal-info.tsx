@@ -88,6 +88,7 @@ const qualificationOptions = [
       { value: "BS Software Engineering", label: "BS Software Engineering" },
       { value: "BS (Tele)", label: "BS (Tele)" },
       { value: "BS Zoology", label: "BS Zoology" },
+      { value: "BSc Elctrical Enginner", label: "BSc Electrical Engineer" },
       { value: "B-Tech", label: "B-Tech" },
     ]
   },
@@ -205,6 +206,7 @@ const designationOptions = [
   { value: "Naib Qasid", label: "Naib Qasid" },
   { value: "Sanitary Worker", label: "Sanitary Worker" },
   { value: "Water Carrier", label: "Water Carrier" },
+  { value: "CCTV INCHARGE", label: "CCTV Incharge" },
 ]
 
 // Collectorate options (single select)
@@ -356,6 +358,10 @@ const currentPostingOptions = [
   { value: "ASU Central", label: "ASU Central" },
   { value: "AC-I HQ: Office", label: "AC-I HQ: Office" },
   { value: "Custom House, Peshawar", label: "Custom House, Peshawar" },
+  { value: "SWH RATTA KULACHI", label: "SWH Ratta Kulachi" },
+  { value: "SWH RATTA KULACHI D.I.KHAN", label: "SWH Ratta Kulachi D.I. Khan" },
+  { value: "ASU D.I.KHAN", label: "ASU D.I. Khan" },
+  { value: "IP JCP AMAN MELA", label: "IP JCP Aman Mela" },
 ]
 
 // Flatten options for React Select while preserving group structure

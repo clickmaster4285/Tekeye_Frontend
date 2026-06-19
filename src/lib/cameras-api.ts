@@ -104,6 +104,14 @@ export type DetectionEvent = {
   camera: number;
   camera_code: string;
   camera_name: string;
+  site_code: string;
+  site_name: string;
+  nvr_name: string;
+  nvr_ip: string;
+  channel: number;
+  zone: string;
+  purpose: CameraPurpose;
+  purpose_label: string;
   class_name: string;
   label: string;
   confidence: number;
@@ -320,6 +328,17 @@ export async function deleteCamera(id: number): Promise<void> {
 }
 
 export async function fetchMlLiveDetections(cameraId: number): Promise<{
+  camera_id: number;
+  camera_code: string;
+  camera_name: string;
+  site_code: string;
+  site_name: string;
+  nvr_name: string;
+  nvr_ip: string;
+  channel: number;
+  zone: string;
+  purpose: CameraPurpose;
+  purpose_label: string;
   detections: Array<{
     class_name: string;
     label: string;
@@ -328,6 +347,7 @@ export async function fetchMlLiveDetections(cameraId: number): Promise<{
     alert?: boolean;
   }>;
   count: number;
+  saved_count: number;
 }> {
   const res = await fetch(`${API}/cameras/${cameraId}/ml-live/detections/`, {
     headers: getAuthHeaders(),
@@ -359,10 +379,45 @@ export async function detectOnCamera(cameraId: number): Promise<{
   return data;
 }
 
-export async function fetchDetectionEvents(limit = 50, cameraId?: number): Promise<DetectionEvent[]> {
-  const params = new URLSearchParams({ limit: String(limit) });
-  if (cameraId != null) params.set("camera", String(cameraId));
-  const res = await fetch(`${API}/cameras/detection-events/?${params}`, {
+export type DetectionEventsPage = {
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  results: DetectionEvent[];
+};
+
+export type FetchDetectionEventsParams = {
+  page?: number;
+  pageSize?: number;
+  cameraId?: number;
+  siteCode?: string;
+  nvrId?: number;
+  channel?: number;
+  zone?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+};
+
+export async function fetchDetectionEvents(
+  params: FetchDetectionEventsParams = {}
+): Promise<DetectionEventsPage> {
+  const page = params.page ?? 1;
+  const pageSize = params.pageSize ?? 25;
+  const searchParams = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (params.cameraId != null) searchParams.set("camera", String(params.cameraId));
+  if (params.siteCode?.trim()) searchParams.set("site", params.siteCode.trim());
+  if (params.nvrId != null) searchParams.set("nvr", String(params.nvrId));
+  if (params.channel != null) searchParams.set("channel", String(params.channel));
+  if (params.zone?.trim()) searchParams.set("zone", params.zone.trim());
+  if (params.dateFrom?.trim()) searchParams.set("date_from", params.dateFrom.trim());
+  if (params.dateTo?.trim()) searchParams.set("date_to", params.dateTo.trim());
+  if (params.search?.trim()) searchParams.set("q", params.search.trim());
+  const res = await fetch(`${API}/cameras/detection-events/?${searchParams}`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });

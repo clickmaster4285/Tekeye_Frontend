@@ -53,6 +53,23 @@ export function CameraMlReadings({
             {scanning && <Badge variant="outline">Scanning…</Badge>}
           </div>
           <dl className="grid grid-cols-2 gap-2 text-xs">
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">Site</dt>
+              <dd className="font-medium">
+                {camera.site_name}
+                <span className="text-muted-foreground font-normal"> ({camera.site_code})</span>
+              </dd>
+            </div>
+            <div className="col-span-2">
+              <dt className="text-muted-foreground">NVR</dt>
+              <dd className="font-medium">
+                {camera.nvr_name}
+                <span className="text-muted-foreground font-normal font-mono text-[11px]">
+                  {" "}
+                  · {camera.nvr_ip} · CH {camera.channel}
+                </span>
+              </dd>
+            </div>
             <div>
               <dt className="text-muted-foreground">Detections</dt>
               <dd className="font-semibold text-lg">{readings.length}</dd>
