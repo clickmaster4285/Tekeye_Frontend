@@ -384,6 +384,7 @@ export type DetectionEventsPage = {
   page: number;
   page_size: number;
   total_pages: number;
+  filters_applied?: boolean;
   results: DetectionEvent[];
 };
 
@@ -404,7 +405,7 @@ export async function fetchDetectionEvents(
   params: FetchDetectionEventsParams = {}
 ): Promise<DetectionEventsPage> {
   const page = params.page ?? 1;
-  const pageSize = params.pageSize ?? 25;
+  const pageSize = params.pageSize ?? 100;
   const searchParams = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
