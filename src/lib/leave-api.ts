@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { apiUrl, getAuthHeaders } from "@/lib/api"
-=======
 import { API_BASE_URL, getAuthHeaders } from "@/lib/api"
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type LeaveTypeRecord = {
   id: number
@@ -34,11 +30,7 @@ export type LeaveRequestRecord = {
   updated_at: string
 }
 
-<<<<<<< HEAD
-const BASE = apiUrl("")
-=======
 const BASE = `${API_BASE_URL}/api`
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export async function fetchLeaveTypes(): Promise<LeaveTypeRecord[]> {
   const res = await fetch(`${BASE}/leave-types/`, { headers: getAuthHeaders(), cache: "no-store" })

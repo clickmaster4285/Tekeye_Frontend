@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-import { apiUrl, getAuthHeaders } from "@/lib/api"
-import type { WmsStockRow } from "@/lib/wms-stock-storage"
-
-const BASE = apiUrl("warehouse")
-=======
 import { API_BASE_URL, getAuthHeaders } from "@/lib/api"
 import type { WmsStockRow } from "@/lib/wms-stock-storage"
 
 const BASE = `${API_BASE_URL}/api/warehouse`
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type SelectedDestructionItem = {
   goodsLineId: string

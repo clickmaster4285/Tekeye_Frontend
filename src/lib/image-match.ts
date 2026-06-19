@@ -4,11 +4,7 @@
  * No backend required.
  */
 
-<<<<<<< HEAD
-import { apiUrl, resolveApiUrl } from "@/lib/api"
-=======
 import { API_BASE_URL } from "@/lib/api"
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 const FINGERPRINT_SIZE = 32
 
@@ -105,12 +101,8 @@ function isUsableInlinePhoto(value: string): boolean {
 function absoluteApiUrl(pathOrUrl: string): string {
   const s = pathOrUrl.trim()
   if (s.startsWith("http://") || s.startsWith("https://")) return s
-<<<<<<< HEAD
-  return resolveApiUrl(s.startsWith("/") ? s : `/${s}`)
-=======
   const base = API_BASE_URL.replace(/\/$/, "")
   return `${base}${s.startsWith("/") ? s : `/${s}`}`
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 }
 
 /** Get the best available photo URL from a visitor record (inline blob, API URL, or profile-image endpoint). */
@@ -158,11 +150,7 @@ export function getVisitorPhotoUrl(visitor: Record<string, unknown>): string | u
       v.has_visitor_photos === true ||
       v.has_photo_capture === true
     if (hasPhoto) {
-<<<<<<< HEAD
-      return apiUrl(`visitors/${id}/profile-image/`)
-=======
       return `${API_BASE_URL.replace(/\/$/, "")}/api/visitors/${id}/profile-image/`
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
     }
   }
 

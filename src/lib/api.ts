@@ -1,33 +1,5 @@
 /**
  * Shared API base URL and auth header helper for backend (Django) API calls.
-<<<<<<< HEAD
- *
- * Configure VITE_API_BASE_URL in frontend/.env only (never hardcode hosts in source).
- * - Empty: same-origin (/api/...) — works for LAN and public when nginx proxies /api/.
- * - Full URL: direct calls to Django (e.g. local dev without the Vite proxy).
- */
-export const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? "")
-  .trim()
-  .replace(/\/$/, "");
-
-/** Join VITE_API_BASE_URL with a site path (empty base = same-origin). */
-export function resolveApiUrl(path: string): string {
-  const normalized = path.startsWith("/") ? path : `/${path}`;
-  return API_BASE_URL ? `${API_BASE_URL}${normalized}` : normalized;
-}
-
-/** Build a Django REST path under /api/. */
-export function apiUrl(pathWithinApi = ""): string {
-  const segment = pathWithinApi.replace(/^\/+/, "");
-  return resolveApiUrl(segment ? `/api/${segment}` : "/api");
-}
-
-/** Build a URL for uploaded media under /media/. */
-export function mediaUrl(relativePath: string): string {
-  const clean = relativePath.replace(/^\/+/, "");
-  return resolveApiUrl(`/media/${clean}`);
-}
-=======
  */
 const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
 
@@ -35,7 +7,6 @@ export const API_BASE_URL =
   typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
     ? import.meta.env.VITE_API_BASE_URL
     : DEFAULT_API_BASE_URL;
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 const AUTH_TOKEN_KEY = "pakistan_customs_token";
 

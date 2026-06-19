@@ -104,11 +104,7 @@ export function CameraManagementView({
               <MlCameraFeed
                 camera={camera}
                 pollMl
-<<<<<<< HEAD
-                pollIntervalMs={2000}
-=======
                 pollIntervalMs={800}
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
                 className="rounded-lg border"
                 showBrandLogo
                 showFullscreenButton

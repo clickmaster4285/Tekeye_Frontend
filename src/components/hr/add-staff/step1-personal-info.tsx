@@ -88,10 +88,6 @@ const qualificationOptions = [
       { value: "BS Software Engineering", label: "BS Software Engineering" },
       { value: "BS (Tele)", label: "BS (Tele)" },
       { value: "BS Zoology", label: "BS Zoology" },
-<<<<<<< HEAD
-      { value: "BSc Elctrical Enginner", label: "BSc Electrical Engineer" },
-=======
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
       { value: "B-Tech", label: "B-Tech" },
     ]
   },
@@ -209,10 +205,6 @@ const designationOptions = [
   { value: "Naib Qasid", label: "Naib Qasid" },
   { value: "Sanitary Worker", label: "Sanitary Worker" },
   { value: "Water Carrier", label: "Water Carrier" },
-<<<<<<< HEAD
-  { value: "CCTV INCHARGE", label: "CCTV Incharge" },
-=======
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 ]
 
 // Collectorate options (single select)
@@ -364,13 +356,6 @@ const currentPostingOptions = [
   { value: "ASU Central", label: "ASU Central" },
   { value: "AC-I HQ: Office", label: "AC-I HQ: Office" },
   { value: "Custom House, Peshawar", label: "Custom House, Peshawar" },
-<<<<<<< HEAD
-  { value: "SWH RATTA KULACHI", label: "SWH Ratta Kulachi" },
-  { value: "SWH RATTA KULACHI D.I.KHAN", label: "SWH Ratta Kulachi D.I. Khan" },
-  { value: "ASU D.I.KHAN", label: "ASU D.I. Khan" },
-  { value: "IP JCP AMAN MELA", label: "IP JCP Aman Mela" },
-=======
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 ]
 
 // Flatten options for React Select while preserving group structure
