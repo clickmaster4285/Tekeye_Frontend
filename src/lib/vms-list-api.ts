@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-import { apiUrl, getAuthHeaders } from "@/lib/api";
-import { getUserLocationFilter } from "@/lib/location-access";
-
-const API = apiUrl("");
-=======
 import { API_BASE_URL, getAuthHeaders } from "@/lib/api";
 import { getUserLocationFilter } from "@/lib/location-access";
 
 const API = `${API_BASE_URL}/api`;
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type VmsListRow = { id: string } & Record<string, string>;
 

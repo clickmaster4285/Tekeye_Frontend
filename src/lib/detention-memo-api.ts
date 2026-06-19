@@ -1,15 +1,9 @@
 /**
  * Detention Memo API — Django REST backend (PostgreSQL).
  */
-<<<<<<< HEAD
-import { apiUrl, getAuthHeaders, getAuthHeadersFormData } from "@/lib/api"
-
-const BASE = apiUrl("detention-memos")
-=======
 import { API_BASE_URL, getAuthHeaders, getAuthHeadersFormData } from "@/lib/api"
 
 const BASE = `${API_BASE_URL}/api/detention-memos`
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 function errorMessage(res: Response, body: unknown): string {
   if (res.status === 400 && body && typeof body === "object" && !Array.isArray(body)) {

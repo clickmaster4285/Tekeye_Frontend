@@ -46,12 +46,6 @@ const DEPARTMENT_OPTIONS = [
   { value: "PROCUREMENT", label: "Procurement" },
   { value: "ENFORCEMENT", label: "Enforcement" },
   { value: "CUSTOMS", label: "Customs" },
-<<<<<<< HEAD
-  { value: "CUSTOMS (ENF)", label: "Customs (Enforcement)" },
-  { value: "CUSTOMS (INTELLIGENCE)", label: "Customs (Intelligence)" },
-  { value: "TekEye HR", label: "TekEye HR" },
-=======
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 ]
 
 const EMPLOYMENT_TYPES = [
@@ -60,13 +54,6 @@ const EMPLOYMENT_TYPES = [
   { value: "contract", label: "Contract" },
   { value: "intern", label: "Intern" },
   { value: "probation", label: "Probation" },
-<<<<<<< HEAD
-  { value: "Permanent", label: "Permanent" },
-  { value: "Contract", label: "Contract (Government)" },
-  { value: "Deputation", label: "Deputation" },
-  { value: "Daily Wage", label: "Daily Wage" },
-=======
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 ]
 
 const BPS_OPTIONS = [
@@ -580,8 +567,4 @@ export default function AddStaffPage() {
             </form>
       </div>
   )
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68

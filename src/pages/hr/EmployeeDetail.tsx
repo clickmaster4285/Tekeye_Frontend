@@ -8,11 +8,7 @@ import {
   isDispositionStaffId,
   type StaffRecord,
 } from "@/lib/staff-api"
-<<<<<<< HEAD
-import { mediaUrl, resolveApiUrl } from "@/lib/api"
-=======
 import { API_BASE_URL } from "@/lib/api"
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 import { ROUTES } from "@/routes/config"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
@@ -48,12 +44,8 @@ function documentUrl(path: string | null | undefined): string | null {
   if (!path || !String(path).trim()) return null
   const p = String(path).trim()
   if (p.startsWith("http")) return p
-<<<<<<< HEAD
-  return p.startsWith("/") ? resolveApiUrl(p) : mediaUrl(p)
-=======
   const base = API_BASE_URL.replace(/\/$/, "")
   return p.startsWith("/") ? `${base}${p}` : `${base}/media/${p}`
->>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 }
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp)$/i
