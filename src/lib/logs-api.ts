@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders } from "@/lib/api"
+=======
+import { API_BASE_URL, getAuthHeaders } from "@/lib/api"
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type ActivityLogRecord = {
   id: number
@@ -30,7 +34,11 @@ export async function fetchActivityLogs(params?: {
   if (params?.page_size != null) sp.set("page_size", String(params.page_size))
   if (params?.username) sp.set("username", params.username)
   const qs = sp.toString()
+<<<<<<< HEAD
   const base = apiUrl("activity-logs/")
+=======
+  const base = `${API_BASE_URL}/api/activity-logs/`
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   const url = qs ? `${base}?${qs}` : base
   try {
     const res = await fetch(url, { headers: getAuthHeaders() })
@@ -46,7 +54,11 @@ export async function fetchActivityLogs(params?: {
 export async function reportActivityLog(action: string): Promise<void> {
   const token = typeof window !== "undefined" ? window.sessionStorage.getItem("pakistan_customs_token") : null
   if (!token || !action?.trim()) return
+<<<<<<< HEAD
   const url = apiUrl("activity-logs/report/")
+=======
+  const url = `${API_BASE_URL}/api/activity-logs/report/`
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   try {
     await fetch(url, {
       method: "POST",

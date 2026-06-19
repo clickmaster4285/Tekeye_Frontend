@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders, getAuthHeadersFormData } from "@/lib/api";
+=======
+import { API_BASE_URL, getAuthHeaders, getAuthHeadersFormData } from "@/lib/api";
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 export type MLHealthResponse = {
   status: "ok" | "disabled" | "error";
@@ -19,7 +23,11 @@ export type MLDetection = {
 };
 
 export async function fetchMLHealth(): Promise<MLHealthResponse> {
+<<<<<<< HEAD
   const response = await fetch(apiUrl("ml/health/"), {
+=======
+  const response = await fetch(`${API_BASE_URL}/api/ml/health/`, {
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -36,7 +44,11 @@ export async function detectImage(
   form.append("image", imageFile);
   const params = new URLSearchParams();
   if (options?.conf != null) params.set("conf", String(options.conf));
+<<<<<<< HEAD
   const url = `${apiUrl("ml/detect/")}${params.toString() ? `?${params}` : ""}`;
+=======
+  const url = `${API_BASE_URL}/api/ml/detect/${params.toString() ? `?${params}` : ""}`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   const response = await fetch(url, {
     method: "POST",
     headers: getAuthHeadersFormData(),
@@ -51,7 +63,11 @@ export async function detectImage(
 }
 
 export async function reloadKnownFaces(): Promise<{ reloaded: boolean; known_faces: number }> {
+<<<<<<< HEAD
   const response = await fetch(apiUrl("ml/reload-faces/"), {
+=======
+  const response = await fetch(`${API_BASE_URL}/api/ml/reload-faces/`, {
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
     method: "POST",
     headers: getAuthHeaders(),
   });

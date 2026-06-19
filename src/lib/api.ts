@@ -1,5 +1,6 @@
 /**
  * Shared API base URL and auth header helper for backend (Django) API calls.
+<<<<<<< HEAD
  *
  * Configure VITE_API_BASE_URL in frontend/.env only (never hardcode hosts in source).
  * - Empty: same-origin (/api/...) — works for LAN and public when nginx proxies /api/.
@@ -26,6 +27,15 @@ export function mediaUrl(relativePath: string): string {
   const clean = relativePath.replace(/^\/+/, "");
   return resolveApiUrl(`/media/${clean}`);
 }
+=======
+ */
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+
+export const API_BASE_URL =
+  typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL
+    : DEFAULT_API_BASE_URL;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 const AUTH_TOKEN_KEY = "pakistan_customs_token";
 

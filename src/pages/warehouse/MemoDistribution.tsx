@@ -49,6 +49,10 @@ import {
 } from "@/lib/wms-stock-storage"
 import { syncWarehouseStock } from "@/lib/memo-distribution-api"
 import type { CameraRecord } from "@/lib/cameras-api"
+<<<<<<< HEAD
+=======
+import { API_BASE_URL } from "@/lib/api"
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 import { recordingEntries, videoUrlForEntry } from "@/lib/destruction-record-utils"
 import { getDestructionDetailPath, ROUTES } from "@/routes/config"
 

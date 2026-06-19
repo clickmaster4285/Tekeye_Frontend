@@ -1,9 +1,15 @@
 /**
  * Warehouse and Zone Management API — Django REST backend.
  */
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders } from "@/lib/api"
 
 const BASE = apiUrl("")
+=======
+import { API_BASE_URL, getAuthHeaders } from "@/lib/api"
+
+const BASE = `${API_BASE_URL}/api`
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 // Types
 export type WarehouseRecord = {

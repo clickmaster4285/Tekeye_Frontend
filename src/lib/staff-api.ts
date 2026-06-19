@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders, getAuthHeadersFormData, getStoredToken, resolveApiUrl } from "@/lib/api";
+=======
+import { API_BASE_URL, getAuthHeaders, getAuthHeadersFormData, getStoredToken } from "@/lib/api";
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 import {
   getDispositionStaff,
   getDispositionStaffById,
@@ -90,7 +94,11 @@ export type StaffRecord = {
   } | null;
 };
 
+<<<<<<< HEAD
 const STAFF_ENDPOINT = apiUrl("staff/");
+=======
+const STAFF_ENDPOINT = `${API_BASE_URL}/api/staff/`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 function useStaffRestApi(): boolean {
   return Boolean(getStoredToken());
@@ -132,7 +140,11 @@ export function resolveStaffProfileImageUrl(
   const p = profileImage!.trim();
   if (p.startsWith("data:")) return p;
   if (p.startsWith("http")) return p;
+<<<<<<< HEAD
   return resolveApiUrl(p.startsWith("/") ? p : `/${p}`);
+=======
+  return `${API_BASE_URL}${p.startsWith("/") ? "" : "/"}${p}`;
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 }
 
 export function staffInitials(fullName: string | null | undefined): string {

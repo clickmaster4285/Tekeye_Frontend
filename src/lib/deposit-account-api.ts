@@ -1,9 +1,15 @@
 /**
  * Deposit Account Register API — linked to detention memos for detention-type deposits.
  */
+<<<<<<< HEAD
 import { apiUrl, getAuthHeaders } from "@/lib/api"
 
 const BASE = apiUrl("deposit-accounts")
+=======
+import { API_BASE_URL, getAuthHeaders } from "@/lib/api"
+
+const BASE = `${API_BASE_URL}/api/deposit-accounts`
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 function errorMessage(res: Response, body: unknown): string {
   if (res.status === 400 && body && typeof body === "object" && !Array.isArray(body)) {

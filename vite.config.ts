@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { defineConfig, loadEnv } from "vite"
+=======
+import { defineConfig } from "vite"
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 import react from "@vitejs/plugin-react"
 import { VitePWA } from "vite-plugin-pwa"
 import * as path from "path"
@@ -22,11 +26,15 @@ function ensureDistIconPlugin() {
   }
 }
 
+<<<<<<< HEAD
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, projectRoot, "")
   const devProxyTarget = env.VITE_DEV_API_PROXY_TARGET?.trim()
 
   return {
+=======
+export default defineConfig({
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   root: projectRoot,
   publicDir: path.join(projectRoot, "public"),
   plugins: [
@@ -89,6 +97,7 @@ export default defineConfig(({ mode }) => {
   },
   server: {
     port: 3000,
+<<<<<<< HEAD
     ...(devProxyTarget
       ? {
           proxy: {
@@ -99,4 +108,7 @@ export default defineConfig(({ mode }) => {
       : {}),
   },
   }
+=======
+  },
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 })

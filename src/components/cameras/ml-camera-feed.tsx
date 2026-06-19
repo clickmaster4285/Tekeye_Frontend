@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useCallback, useEffect, useRef, useState } from "react"
+=======
+import { useCallback, useEffect, useState } from "react"
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 import { Maximize2, Minimize2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,6 +25,10 @@ type DetectionBox = {
 
 type MlCameraFeedProps = {
   camera: CameraRecord
+<<<<<<< HEAD
+=======
+  /** Overlays are baked into the ML live stream; kept for call-site compatibility. */
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   showOverlay?: boolean
   pollMl?: boolean
   pollIntervalMs?: number
@@ -33,9 +41,12 @@ type MlCameraFeedProps = {
 }
 
 const TEKEYE_LOGO_SRC = "/pakistan-customs-logo.png"
+<<<<<<< HEAD
 const ML_UPGRADE_DELAY_MS = 2500
 const MAX_STREAM_RETRIES = 4
 const STREAM_RETRY_MS = 1500
+=======
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
 function StreamBrandMarks() {
   return (
@@ -77,6 +88,7 @@ export function MlCameraFeed({
   const [streamError, setStreamError] = useState<string | null>(null)
   const [streamRetry, setStreamRetry] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
+<<<<<<< HEAD
   const [usingMlStream, setUsingMlStream] = useState(false)
   const mlUpgradeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -84,10 +96,18 @@ export function MlCameraFeed({
   const rawSrc =
     camera.is_rtsp && camera.stream_path ? getCameraMjpegUrl(camera.stream_path) : null
   const displaySrc = usingMlStream && mlSrc ? mlSrc : rawSrc || mlSrc
+=======
+  const mlLiveSrc = getMlLiveMjpegUrl(camera)
+  const rawMjpegSrc = !mlLiveSrc && camera.is_rtsp && camera.stream_path
+    ? getCameraMjpegUrl(camera.stream_path)
+    : null
+  const streamSrc = mlLiveSrc || rawMjpegSrc
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
   const exitFullscreen = useCallback(() => setIsFullscreen(false), [])
 
   useEffect(() => {
+<<<<<<< HEAD
     setUsingMlStream(false)
     setStreamError(null)
     setStreamRetry(0)
@@ -104,6 +124,9 @@ export function MlCameraFeed({
 
   useEffect(() => {
     if (!pollMl || !mlSrc) return
+=======
+    if (!pollMl || !mlLiveSrc) return
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
     let cancelled = false
 
     const run = async () => {
@@ -135,7 +158,11 @@ export function MlCameraFeed({
       cancelled = true
       window.clearInterval(id)
     }
+<<<<<<< HEAD
   }, [camera.id, mlSrc, pollMl, pollIntervalMs, onDetections, onMlError, onScanStart])
+=======
+  }, [camera.id, mlLiveSrc, pollMl, pollIntervalMs, onDetections, onMlError, onScanStart])
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
 
   useEffect(() => {
     if (!isFullscreen) return
@@ -150,6 +177,7 @@ export function MlCameraFeed({
     }
   }, [isFullscreen, exitFullscreen])
 
+<<<<<<< HEAD
   const handleStreamError = () => {
     if (usingMlStream && rawSrc) {
       setUsingMlStream(false)
@@ -167,6 +195,8 @@ export function MlCameraFeed({
     )
   }
 
+=======
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
   return (
     <div
       className={cn(
@@ -177,6 +207,7 @@ export function MlCameraFeed({
       )}
     >
       <div className={cn("relative flex-1 min-h-0 w-full", isFullscreen && "h-full")}>
+<<<<<<< HEAD
         {displaySrc ? (
           <img
             key={`${displaySrc}-${streamRetry}`}
@@ -185,6 +216,26 @@ export function MlCameraFeed({
             className="h-full w-full object-contain"
             onLoad={() => setStreamError(null)}
             onError={handleStreamError}
+=======
+        {streamSrc ? (
+          <img
+            key={`${streamSrc}-${streamRetry}`}
+            src={streamSrc}
+            alt={camera.name}
+            className="h-full w-full object-contain"
+            onLoad={() => setStreamError(null)}
+            onError={() => {
+              if (mlLiveSrc && streamRetry < 8) {
+                window.setTimeout(() => setStreamRetry((n) => n + 1), 3000)
+                return
+              }
+              setStreamError(
+                mlLiveSrc
+                  ? "ML annotated stream failed — wait for ML to connect or restart backend."
+                  : "Cannot load stream — verify NVR credentials, channel, and ffmpeg."
+              )
+            }}
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
           />
         ) : (
           <div className="flex h-full min-h-[120px] items-center justify-center px-4 text-center text-sm text-muted-foreground">
@@ -196,6 +247,7 @@ export function MlCameraFeed({
           <Badge variant="secondary" className="text-xs">
             {camera.name}
           </Badge>
+<<<<<<< HEAD
           {usingMlStream && mlSrc ? (
             <Badge className="bg-[#3b82f6] text-xs">ML live</Badge>
           ) : rawSrc ? (
@@ -203,6 +255,9 @@ export function MlCameraFeed({
               Live
             </Badge>
           ) : null}
+=======
+          {mlLiveSrc && <Badge className="bg-[#3b82f6] text-xs">ML live</Badge>}
+>>>>>>> 012abc6293f29ac44e674d2a27539de9a34fec68
           <Badge className="bg-[#3b82f6]/80 text-xs">{camera.purpose_label}</Badge>
         </div>
 
