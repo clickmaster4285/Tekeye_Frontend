@@ -117,7 +117,7 @@ function DetectionRow({ row }: { row: DetectionEvent }) {
         <div className="flex items-start gap-2">
           <Video className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <div className="truncate font-medium text-sm">{row.camera_name}</div>
+            <div className="truncate font-medium text-sm">{row.name}</div>
             <div className="text-[11px] text-muted-foreground">{row.camera_code}</div>
           </div>
         </div>

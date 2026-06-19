@@ -103,7 +103,7 @@ export type DetectionEvent = {
   id: number;
   camera: number;
   camera_code: string;
-  camera_name: string;
+  name: string;
   site_code: string;
   site_name: string;
   nvr_name: string;
@@ -330,7 +330,7 @@ export async function deleteCamera(id: number): Promise<void> {
 export async function fetchMlLiveDetections(cameraId: number): Promise<{
   camera_id: number;
   camera_code: string;
-  camera_name: string;
+  name: string;
   site_code: string;
   site_name: string;
   nvr_name: string;
