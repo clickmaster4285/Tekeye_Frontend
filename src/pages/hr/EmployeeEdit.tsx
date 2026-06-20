@@ -33,6 +33,7 @@ export default function EmployeeEditPage() {
 
   const [saving, setSaving] = useState(false)
   const [fullName, setFullName] = useState("")
+  const [fatherName, setFatherName] = useState("")
   const [designation, setDesignation] = useState("")
   const [department, setDepartment] = useState("")
   const [email, setEmail] = useState("")
@@ -54,6 +55,7 @@ export default function EmployeeEditPage() {
     if (staff) {
       const s = staff as StaffRecord
       setFullName(s.full_name ?? "")
+      setFatherName(s.father_name ?? "")
       setDesignation(s.designation ?? "")
       setDepartment(s.department ?? "")
       setEmail(s.email ?? "")
@@ -80,6 +82,7 @@ export default function EmployeeEditPage() {
     try {
       await updateStaff(staffId, {
         full_name: fullName,
+        father_name: fatherName || undefined,
         designation,
         department,
         email: email || undefined,
@@ -170,12 +173,29 @@ export default function EmployeeEditPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="full_name">Full name *</Label>
+                <Label htmlFor="full_name">Employee name *</Label>
                 <Input
                   id="full_name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="father_name">Father&apos;s name</Label>
+                <Input
+                  id="father_name"
+                  value={fatherName}
+                  onChange={(e) => setFatherName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="personal_number">Personal number</Label>
+                <Input
+                  id="personal_number"
+                  value={personalNumber}
+                  onChange={(e) => setPersonalNumber(e.target.value)}
+                  placeholder="Employee personal / service number"
                 />
               </div>
               <div className="space-y-2">
@@ -211,14 +231,6 @@ export default function EmployeeEditPage() {
                   id="phone"
                   value={phonePrimary}
                   onChange={(e) => setPhonePrimary(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="personal_number">Personal number</Label>
-                <Input
-                  id="personal_number"
-                  value={personalNumber}
-                  onChange={(e) => setPersonalNumber(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

@@ -236,7 +236,7 @@ export default function EmployeesPage() {
                     <TableHead className="w-12 text-center">S.No.</TableHead>
                     <TableHead>Source</TableHead>
                     <TableHead>Personal No.</TableHead>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Employee Name</TableHead>
                     <TableHead>Father&apos;s Name</TableHead>
                     <TableHead>Designation</TableHead>
                     <TableHead className="text-center">BPS</TableHead>

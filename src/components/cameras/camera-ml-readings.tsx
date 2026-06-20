@@ -72,8 +72,8 @@ export function CameraMlReadings({
             </p>
           )}
           <p className="text-xs text-muted-foreground">
-            Persons are matched against enrolled staff faces. No match is labeled <strong>unknown</strong>.
-            Run <code className="text-[11px]">python manage.py sync_known_faces</code> after adding staff photos.
+            Staff face vectors are loaded from the database when photos are saved.
+            Run <code className="text-[11px]">python manage.py sync_staff_faces</code> to rebuild embeddings if needed.
           </p>
         </CardContent>
       </Card>

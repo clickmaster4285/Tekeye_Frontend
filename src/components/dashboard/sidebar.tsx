@@ -375,7 +375,7 @@ export function Sidebar({ mobileOpen = false, onMobileOpenChange }: SidebarProps
 
       <div className="p-4 border-t border-[#E5E7EB] shrink-0">
         <p className="text-sm leading-4 text-[#6B7280] font-normal">
-          © 2026 Powered by <span className="underline">TekEye.</span>
+          © 2026 v1.0 Powered by <span className="underline">TekEye.</span>
         </p>
       </div>
     </aside>

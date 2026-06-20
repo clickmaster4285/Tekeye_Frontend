@@ -472,7 +472,7 @@ export function AddStaffStep1PersonalInfo({
     },
     validationSchema: Yup.object({
       personal_number: Yup.string().trim().required("Personal number is required"),
-      full_name: Yup.string().trim().required("Full name is required"),
+      full_name: Yup.string().trim().required("Employee name is required"),
       gender: Yup.string().trim().required("Gender is required"),
       cnic: Yup.string().trim().required("CNIC is required"),
       phone: Yup.string().trim().required("Mobile number is required"),
@@ -796,6 +796,29 @@ export function AddStaffStep1PersonalInfo({
         {/* Personal Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
+            <RequiredLabel>Employee Name</RequiredLabel>
+            <Input
+              placeholder="e.g. Mohammad Ali Hassan"
+              name="full_name"
+              value={formik.values.full_name}
+              onChange={(e) => {
+                formik.handleChange(e)
+                updateForm({ full_name: e.target.value })
+              }}
+              onBlur={formik.handleBlur}
+              className={cn(
+                "h-10 text-base bg-background border-border",
+                formik.touched.full_name && formik.errors.full_name ? "border-destructive" : ""
+              )}
+            />
+            {formik.touched.full_name && formik.errors.full_name ? (
+              <p className="text-sm text-destructive">{formik.errors.full_name}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Saved as employee full name</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
             <RequiredLabel>Personal Number</RequiredLabel>
             <Input
               placeholder="e.g. 12345"
@@ -814,35 +837,12 @@ export function AddStaffStep1PersonalInfo({
             {formik.touched.personal_number && formik.errors.personal_number ? (
               <p className="text-sm text-destructive">{formik.errors.personal_number}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">(Employee ID)</p>
+              <p className="text-sm text-muted-foreground">Saved in personal_number column</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <RequiredLabel>Full Name (As per CNIC/Passport)</RequiredLabel>
-            <Input
-              placeholder="e.g. Mohammad Ali Hassan"
-              name="full_name"
-              value={formik.values.full_name}
-              onChange={(e) => {
-                formik.handleChange(e)
-                updateForm({ full_name: e.target.value })
-              }}
-              onBlur={formik.handleBlur}
-              className={cn(
-                "h-10 text-base bg-background border-border",
-                formik.touched.full_name && formik.errors.full_name ? "border-destructive" : ""
-              )}
-            />
-            {formik.touched.full_name && formik.errors.full_name ? (
-              <p className="text-sm text-destructive">{formik.errors.full_name}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">(As per CNIC/Passport)</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-base text-foreground">Father's Name</Label>
+            <Label className="text-base text-foreground">Father&apos;s Name</Label>
             <Input
               placeholder="e.g. Ahmed Hassan"
               value={form.father_name || ""}

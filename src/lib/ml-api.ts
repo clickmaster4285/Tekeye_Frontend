@@ -6,7 +6,7 @@ export type MLHealthResponse = {
   yolo_available?: boolean;
   yolo_weights?: string | null;
   known_faces?: number;
-  known_faces_dir?: string;
+  face_source?: string;
 };
 
 export type MLDetection = {

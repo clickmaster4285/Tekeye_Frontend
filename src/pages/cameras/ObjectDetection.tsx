@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MlSystemStatus } from "@/components/cameras/ml-system-status"
+import { DetectionSnapshotThumb } from "@/components/cameras/detection-snapshot-thumb"
 import {
   fetchDetectionEventsPage,
   fetchDetectionSummary,
@@ -36,7 +37,8 @@ import {
   type DetectionEventsQuery,
 } from "@/lib/cameras-api"
 
-const PAGE_SIZE = 100
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const
+const DEFAULT_PAGE_SIZE = 25
 
 type AppliedFilters = {
   q: string
@@ -79,10 +81,10 @@ function confidenceTone(confidence: number): string {
   return "bg-orange-500"
 }
 
-function buildQuery(page: number, filters: AppliedFilters): DetectionEventsQuery {
+function buildQuery(page: number, pageSize: number, filters: AppliedFilters): DetectionEventsQuery {
   const query: DetectionEventsQuery = {
     page,
-    page_size: PAGE_SIZE,
+    page_size: pageSize,
   }
   if (filters.q.trim()) query.q = filters.q.trim()
   if (filters.site !== "all") query.site = filters.site
@@ -97,6 +99,8 @@ function buildQuery(page: number, filters: AppliedFilters): DetectionEventsQuery
 
 export default function ObjectDetectionPage() {
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
+  const [pageInput, setPageInput] = useState("1")
   const [draft, setDraft] = useState<AppliedFilters>(emptyFilters)
   const [applied, setApplied] = useState<AppliedFilters>(emptyFilters)
 
@@ -116,7 +120,7 @@ export default function ObjectDetectionPage() {
     queryFn: () => fetchCameras(),
   })
 
-  const queryParams = useMemo(() => buildQuery(page, applied), [page, applied])
+  const queryParams = useMemo(() => buildQuery(page, pageSize, applied), [page, pageSize, applied])
 
   const {
     data: eventsPage,
@@ -128,6 +132,7 @@ export default function ObjectDetectionPage() {
     queryKey: ["detection-events", queryParams],
     queryFn: () => fetchDetectionEventsPage(queryParams),
     placeholderData: (prev) => prev,
+    refetchOnWindowFocus: false,
   })
 
   const events = eventsPage?.results ?? []
@@ -168,8 +173,23 @@ export default function ObjectDetectionPage() {
     }
   }, [page, totalPages])
 
-  const rangeStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const rangeEnd = Math.min(page * PAGE_SIZE, totalCount)
+  useEffect(() => {
+    setPageInput(String(page))
+  }, [page])
+
+  const goToPage = () => {
+    const parsed = Number.parseInt(pageInput.trim(), 10)
+    if (Number.isNaN(parsed)) {
+      setPageInput(String(page))
+      return
+    }
+    const target = Math.min(Math.max(1, parsed), Math.max(1, totalPages))
+    setPage(target)
+    setPageInput(String(target))
+  }
+
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
+  const rangeEnd = Math.min(page * pageSize, totalCount)
 
   return (
     <ModulePageLayout
@@ -355,9 +375,29 @@ export default function ObjectDetectionPage() {
                 {hasActiveFilters && totalCount > 0 ? " (filtered from full database)" : ""}
               </CardDescription>
             </div>
-            <Badge variant="secondary" className="w-fit">
-              {PAGE_SIZE} per page
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="det-page-size" className="text-sm text-muted-foreground whitespace-nowrap">
+                Per page
+              </Label>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => {
+                  setPageSize(Number(v))
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger id="det-page-size" className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="w-full min-w-0 space-y-4">
             {error && (
@@ -377,18 +417,19 @@ export default function ObjectDetectionPage() {
                     <TableHead>Label</TableHead>
                     <TableHead className="w-[140px]">Confidence</TableHead>
                     <TableHead>Alert</TableHead>
+                    <TableHead className="w-[140px]">Snapshot</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                         Loading detection records…
                       </TableCell>
                     </TableRow>
                   ) : events.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                         <Camera className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         {hasActiveFilters
                           ? "No detections match your filters. Try broader search terms or clear filters."
@@ -407,7 +448,7 @@ export default function ObjectDetectionPage() {
                         <TableCell>
                           <div className="font-medium">{row.camera_code}</div>
                           <div className="text-xs text-muted-foreground truncate max-w-[160px]">
-                            {row.camera_name}
+                            {row.name ?? row.camera_name ?? row.camera_code}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -441,6 +482,17 @@ export default function ObjectDetectionPage() {
                             <Badge variant="outline">Normal</Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {row.clip_url ? (
+                            <DetectionSnapshotThumb row={row} />
+                          ) : row.clip_status === "pending" || row.clip_status === "recording" ? (
+                            <span className="text-xs text-muted-foreground">Capturing…</span>
+                          ) : row.clip_status === "failed" ? (
+                            <span className="text-xs text-destructive">Capture failed</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -448,12 +500,12 @@ export default function ObjectDetectionPage() {
               </Table>
             </div>
 
-            {totalPages > 1 && (
+            {totalCount > 0 && (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Page {page} of {totalPages}
+                  Page {page.toLocaleString()} of {totalPages.toLocaleString()}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -463,6 +515,33 @@ export default function ObjectDetectionPage() {
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Previous
                   </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="det-page-jump" className="text-sm text-muted-foreground whitespace-nowrap">
+                      Go to
+                    </Label>
+                    <Input
+                      id="det-page-jump"
+                      type="number"
+                      min={1}
+                      max={Math.max(1, totalPages)}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") goToPage()
+                      }}
+                      placeholder="Page"
+                      className="h-8 w-20 text-center tabular-nums"
+                      disabled={isFetching}
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={goToPage}
+                      disabled={isFetching || totalPages <= 1}
+                    >
+                      Go
+                    </Button>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
