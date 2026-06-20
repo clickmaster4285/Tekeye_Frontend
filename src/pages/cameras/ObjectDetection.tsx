@@ -101,6 +101,7 @@ function buildQuery(page: number, pageSize: number, filters: AppliedFilters): De
 export default function ObjectDetectionPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
+  const [pageInput, setPageInput] = useState("1")
   const [draft, setDraft] = useState<AppliedFilters>(emptyFilters)
   const [applied, setApplied] = useState<AppliedFilters>(emptyFilters)
 
@@ -179,6 +180,21 @@ export default function ObjectDetectionPage() {
       setPage(totalPages)
     }
   }, [page, totalPages])
+
+  useEffect(() => {
+    setPageInput(String(page))
+  }, [page])
+
+  const goToPage = () => {
+    const parsed = Number.parseInt(pageInput.trim(), 10)
+    if (Number.isNaN(parsed)) {
+      setPageInput(String(page))
+      return
+    }
+    const target = Math.min(Math.max(1, parsed), Math.max(1, totalPages))
+    setPage(target)
+    setPageInput(String(target))
+  }
 
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
   const rangeEnd = Math.min(page * pageSize, totalCount)
@@ -504,12 +520,12 @@ export default function ObjectDetectionPage() {
               </Table>
             </div>
 
-            {totalPages > 1 && (
+            {totalCount > 0 && (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Page {page} of {totalPages}
+                  Page {page.toLocaleString()} of {totalPages.toLocaleString()}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -519,6 +535,33 @@ export default function ObjectDetectionPage() {
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Previous
                   </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="det-page-jump" className="text-sm text-muted-foreground whitespace-nowrap">
+                      Go to
+                    </Label>
+                    <Input
+                      id="det-page-jump"
+                      type="number"
+                      min={1}
+                      max={Math.max(1, totalPages)}
+                      value={pageInput}
+                      onChange={(e) => setPageInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") goToPage()
+                      }}
+                      placeholder="Page"
+                      className="h-8 w-20 text-center tabular-nums"
+                      disabled={isFetching}
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={goToPage}
+                      disabled={isFetching || totalPages <= 1}
+                    >
+                      Go
+                    </Button>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
