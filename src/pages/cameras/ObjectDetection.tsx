@@ -12,7 +12,6 @@ import {
   X,
   Flame,
   Camera,
-  Play,
 } from "lucide-react"
 import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,12 +28,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MlSystemStatus } from "@/components/cameras/ml-system-status"
+import { DetectionSnapshotThumb } from "@/components/cameras/detection-snapshot-thumb"
 import {
   fetchDetectionEventsPage,
   fetchDetectionSummary,
   fetchCameras,
   fetchSites,
-  resolveMediaUrl,
   type DetectionEventsQuery,
 } from "@/lib/cameras-api"
 
@@ -418,7 +417,7 @@ export default function ObjectDetectionPage() {
                     <TableHead>Label</TableHead>
                     <TableHead className="w-[140px]">Confidence</TableHead>
                     <TableHead>Alert</TableHead>
-                    <TableHead className="w-[120px]">Clip</TableHead>
+                    <TableHead className="w-[140px]">Snapshot</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -485,23 +484,11 @@ export default function ObjectDetectionPage() {
                         </TableCell>
                         <TableCell>
                           {row.clip_url ? (
-                            <details className="group">
-                              <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-primary hover:underline [&::-webkit-details-marker]:hidden">
-                                <Play className="h-3.5 w-3.5" />
-                                Play
-                              </summary>
-                              <video
-                                src={resolveMediaUrl(row.clip_url)}
-                                controls
-                                preload="metadata"
-                                playsInline
-                                className="mt-2 w-[220px] max-w-full rounded border bg-black"
-                              />
-                            </details>
+                            <DetectionSnapshotThumb row={row} />
                           ) : row.clip_status === "pending" || row.clip_status === "recording" ? (
-                            <span className="text-xs text-muted-foreground">Recording…</span>
+                            <span className="text-xs text-muted-foreground">Capturing…</span>
                           ) : row.clip_status === "failed" ? (
-                            <span className="text-xs text-destructive">Clip failed</span>
+                            <span className="text-xs text-destructive">Capture failed</span>
                           ) : (
                             <span className="text-xs text-muted-foreground">—</span>
                           )}

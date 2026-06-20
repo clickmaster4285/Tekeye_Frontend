@@ -63,7 +63,7 @@ function StreamBrandMarks() {
 export function MlCameraFeed({
   camera,
   pollMl = true,
-  pollIntervalMs = 2000,
+  pollIntervalMs = 2500,
   className = "",
   showBrandLogo = true,
   showFullscreenButton = false,

@@ -164,6 +164,8 @@ export function normalizeApiStaff(row: Record<string, unknown>): StaffRecord {
     user: base.user ?? userDetails?.username ?? null,
     user_details: userDetails ?? null,
     current_posting: base.current_posting ?? base.branch_location ?? null,
+    father_name: (row.father_name as string) ?? base.father_name ?? null,
+    personal_number: (row.personal_number as string) ?? base.personal_number ?? null,
   };
 }
 
@@ -636,8 +638,16 @@ function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
     "username",
     "role",
     "staff_photos",
-    "father_name",
   ]);
+
+  const fullName = String(r.full_name ?? "").trim();
+  if (fullName) fd.append("full_name", fullName);
+
+  const personalNumber = String(r.personal_number ?? "").trim();
+  if (personalNumber) fd.append("personal_number", personalNumber);
+
+  const fatherName = String(r.father_name ?? "").trim();
+  if (fatherName) fd.append("father_name", fatherName);
 
   const phonePrimary = String(r.phone_primary ?? r.phone ?? "").trim();
   if (phonePrimary) fd.append("phone_primary", phonePrimary);
@@ -658,7 +668,7 @@ function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
     }
     if (Array.isArray(v)) continue;
     if (typeof v === "object") continue;
-    if (key === "phone_primary" || key === "phone" || key === "cnic" || key === "national_id") continue;
+    if (key === "phone_primary" || key === "phone" || key === "cnic" || key === "national_id" || key === "full_name" || key === "personal_number" || key === "father_name") continue;
     const s = String(v).trim();
     if (s === "") continue;
     fd.append(key, s);
@@ -729,6 +739,19 @@ export async function updateStaff(
   payload: Partial<CreateStaffPayload>
 ): Promise<StaffRecord> {
   if (useStaffRestApi()) {
+    const hasFile = Object.values(payload).some((v) => v instanceof File);
+    if (hasFile) {
+      const fd = buildStaffMultipartFormData(payload as CreateStaffPayload);
+      const res = await fetch(`${STAFF_ENDPOINT}${id}/`, {
+        method: "PATCH",
+        headers: getAuthHeadersFormData(),
+        body: fd,
+      });
+      if (res.status === 404) throw new Error("Staff not found");
+      if (!res.ok) throw new Error(await parseApiError(res));
+      return normalizeApiStaff((await res.json()) as Record<string, unknown>);
+    }
+
     const body: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(payload)) {
       if (v === undefined) continue;

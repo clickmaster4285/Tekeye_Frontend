@@ -114,11 +114,14 @@ export type DetectionEvent = {
   zone?: string;
   class_name: string;
   label: string;
+  employee_name?: string;
+  personal_number?: string;
   confidence: number;
   bbox: [number, number, number, number];
   is_alert: boolean;
-  clip_status?: ClipStatus;
+    clip_status?: ClipStatus;
   clip_url?: string;
+  clip_thumb_url?: string;
   created_at: string;
 };
 

@@ -358,7 +358,7 @@ export default function LiveCameraGridPage() {
                         camera={cam}
                         pollMl={cam.ml_enabled}
                         showOverlay={showBoundingBoxes}
-                        pollIntervalMs={800}
+                        pollIntervalMs={2500}
                         showBrandLogo
                         showFullscreenButton
                       />
