@@ -36,7 +36,8 @@ import {
   type DetectionEventsQuery,
 } from "@/lib/cameras-api"
 
-const PAGE_SIZE = 100
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const
+const DEFAULT_PAGE_SIZE = 25
 
 type AppliedFilters = {
   q: string
@@ -79,10 +80,10 @@ function confidenceTone(confidence: number): string {
   return "bg-orange-500"
 }
 
-function buildQuery(page: number, filters: AppliedFilters): DetectionEventsQuery {
+function buildQuery(page: number, pageSize: number, filters: AppliedFilters): DetectionEventsQuery {
   const query: DetectionEventsQuery = {
     page,
-    page_size: PAGE_SIZE,
+    page_size: pageSize,
   }
   if (filters.q.trim()) query.q = filters.q.trim()
   if (filters.site !== "all") query.site = filters.site
@@ -97,6 +98,7 @@ function buildQuery(page: number, filters: AppliedFilters): DetectionEventsQuery
 
 export default function ObjectDetectionPage() {
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
   const [draft, setDraft] = useState<AppliedFilters>(emptyFilters)
   const [applied, setApplied] = useState<AppliedFilters>(emptyFilters)
 
@@ -116,7 +118,7 @@ export default function ObjectDetectionPage() {
     queryFn: () => fetchCameras(),
   })
 
-  const queryParams = useMemo(() => buildQuery(page, applied), [page, applied])
+  const queryParams = useMemo(() => buildQuery(page, pageSize, applied), [page, pageSize, applied])
 
   const {
     data: eventsPage,
@@ -168,8 +170,8 @@ export default function ObjectDetectionPage() {
     }
   }, [page, totalPages])
 
-  const rangeStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
-  const rangeEnd = Math.min(page * PAGE_SIZE, totalCount)
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
+  const rangeEnd = Math.min(page * pageSize, totalCount)
 
   return (
     <ModulePageLayout
@@ -355,9 +357,29 @@ export default function ObjectDetectionPage() {
                 {hasActiveFilters && totalCount > 0 ? " (filtered from full database)" : ""}
               </CardDescription>
             </div>
-            <Badge variant="secondary" className="w-fit">
-              {PAGE_SIZE} per page
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="det-page-size" className="text-sm text-muted-foreground whitespace-nowrap">
+                Per page
+              </Label>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => {
+                  setPageSize(Number(v))
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger id="det-page-size" className="w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="w-full min-w-0 space-y-4">
             {error && (
