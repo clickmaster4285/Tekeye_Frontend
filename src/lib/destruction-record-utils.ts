@@ -1,21 +1,41 @@
 import { API_BASE_URL } from "@/lib/api"
 import type { MemoDistributionRecord } from "@/lib/memo-distribution-api"
 
+export type RecordingEntry = MemoDistributionRecord["cameraVideoEntries"][number] & {
+  url?: string
+}
+
+function mediaUrl(path: string): string {
+  const trimmed = path.trim()
+  if (!trimmed) return ""
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith("/media/")) return `${API_BASE_URL.replace(/\/$/, "")}${trimmed}`
+  return `${API_BASE_URL.replace(/\/$/, "")}/media/${trimmed.replace(/^\/+/, "")}`
+}
+
 export function videoUrlForEntry(entry: { url?: string; path?: string }): string | null {
-  if (entry.url) return entry.url
+  if (entry.url?.trim()) return entry.url.trim()
+  if (entry.path?.trim()) return mediaUrl(entry.path)
+  return null
+}
 
-  if (entry.path) return mediaUrl(entry.path)
-
-  if (entry.path) return `${API_BASE_URL}/media/${entry.path.replace(/^\/+/, "")}`
-  const fromApi = record.cameraVideoEntries.filter((entry) => videoUrlForEntry(entry))
+export function recordingEntries(record: MemoDistributionRecord): RecordingEntry[] {
+  const fromApi = record.cameraVideoEntries
+    .map((entry) => ({
+      ...entry,
+      url: videoUrlForEntry(entry) || undefined,
+    }))
+    .filter((entry) => Boolean(entry.url))
   if (fromApi.length > 0) return fromApi
+
   const entries = record.cameraVideos
     .map((entry) => ({
       ...entry,
       url: videoUrlForEntry(entry) || undefined,
     }))
-    .filter((entry) => entry.url)
+    .filter((entry) => Boolean(entry.url))
   if (entries.length > 0) return entries
+
   if (record.videoUrl) {
     return [
       {
@@ -25,6 +45,7 @@ export function videoUrlForEntry(entry: { url?: string; path?: string }): string
       },
     ]
   }
+
   return []
 }
 
