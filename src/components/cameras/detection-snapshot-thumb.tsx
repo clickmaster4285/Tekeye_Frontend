@@ -23,8 +23,7 @@ type DetectionSnapshotThumbProps = {
 export function DetectionSnapshotThumb({ row }: DetectionSnapshotThumbProps) {
   const personName = detectionPersonName(row)
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null)
-  const fullUrl = resolveMediaUrl(row.clip_url || row.clip_thumb_url || "")
-  const thumbUrl = resolveMediaUrl(row.clip_thumb_url || row.clip_url || "")
+  const url = resolveMediaUrl(row.clip_url!)
 
   const namePosition = useMemo(() => {
     if (!personName || !dims || !row.bbox || row.bbox.length < 4) {
@@ -38,13 +37,13 @@ export function DetectionSnapshotThumb({ row }: DetectionSnapshotThumbProps) {
 
   return (
     <a
-      href={fullUrl}
+      href={url}
       target="_blank"
       rel="noopener noreferrer"
       className="relative inline-block"
     >
       <img
-        src={thumbUrl}
+        src={url}
         alt={personName ? `Detection ${personName}` : `Detection ${row.label}`}
         className="h-14 w-24 rounded border object-cover bg-muted hover:opacity-90"
         loading="lazy"

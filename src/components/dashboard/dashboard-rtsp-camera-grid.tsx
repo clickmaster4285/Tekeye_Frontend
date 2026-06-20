@@ -160,7 +160,7 @@ export function DashboardRtspCameraGrid() {
                 key={cam.id}
                 camera={cam}
                 pollMl={cam.ml_enabled}
-                pollIntervalMs={2500}
+                pollIntervalMs={800}
                 showBrandLogo
                 showFullscreenButton
               />

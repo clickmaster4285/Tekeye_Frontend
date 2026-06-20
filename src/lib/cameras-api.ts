@@ -121,7 +121,6 @@ export type DetectionEvent = {
   is_alert: boolean;
     clip_status?: ClipStatus;
   clip_url?: string;
-  clip_thumb_url?: string;
   created_at: string;
 };
 
