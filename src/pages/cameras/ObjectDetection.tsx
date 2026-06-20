@@ -133,14 +133,7 @@ export default function ObjectDetectionPage() {
     queryKey: ["detection-events", queryParams],
     queryFn: () => fetchDetectionEventsPage(queryParams),
     placeholderData: (prev) => prev,
-    refetchInterval: (query) => {
-      const results = query.state.data?.results ?? []
-      return results.some(
-        (row) => row.clip_status === "pending" || row.clip_status === "recording"
-      )
-        ? 5000
-        : false
-    },
+    refetchOnWindowFocus: false,
   })
 
   const events = eventsPage?.results ?? []
