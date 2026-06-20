@@ -99,11 +99,14 @@ export type CameraWritePayload = {
 export type CameraPurposeOption = { value: CameraPurpose; label: string };
 export type NvrBrandOption = { value: NvrBrand; label: string };
 
+export type ClipStatus = "pending" | "recording" | "ready" | "failed" | "skipped" | "";
+
 export type DetectionEvent = {
   id: number;
   camera: number;
   camera_code: string;
-  camera_name: string;
+  name?: string;
+  camera_name?: string;
   site_code?: string;
   site_name?: string;
   nvr_name?: string;
@@ -114,6 +117,8 @@ export type DetectionEvent = {
   confidence: number;
   bbox: [number, number, number, number];
   is_alert: boolean;
+  clip_status?: ClipStatus;
+  clip_url?: string;
   created_at: string;
 };
 
@@ -206,6 +211,23 @@ export function getPreviewMjpegUrl(nvrId: number, channel: number): string {
   const params = new URLSearchParams({ nvr_id: String(nvrId), channel: String(channel) });
   if (token) params.set("token", token);
   return `${base}/api/cameras/preview/mjpeg/?${params}`;
+}
+
+/** Resolve a Django media path or absolute URL against the API host. */
+export function resolveMediaUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  const base = API_BASE_URL.replace(/\/$/, "");
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      return `${base}${parsed.pathname}${parsed.search}`;
+    } catch {
+      return trimmed;
+    }
+  }
+  const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${base}${path}`;
 }
 
 // ——— Sites ———

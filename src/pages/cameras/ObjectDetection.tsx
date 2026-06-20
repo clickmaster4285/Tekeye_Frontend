@@ -12,6 +12,7 @@ import {
   X,
   Flame,
   Camera,
+  Play,
 } from "lucide-react"
 import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,6 +34,7 @@ import {
   fetchDetectionSummary,
   fetchCameras,
   fetchSites,
+  resolveMediaUrl,
   type DetectionEventsQuery,
 } from "@/lib/cameras-api"
 
@@ -130,6 +132,14 @@ export default function ObjectDetectionPage() {
     queryKey: ["detection-events", queryParams],
     queryFn: () => fetchDetectionEventsPage(queryParams),
     placeholderData: (prev) => prev,
+    refetchInterval: (query) => {
+      const results = query.state.data?.results ?? []
+      return results.some(
+        (row) => row.clip_status === "pending" || row.clip_status === "recording"
+      )
+        ? 5000
+        : false
+    },
   })
 
   const events = eventsPage?.results ?? []
@@ -399,18 +409,19 @@ export default function ObjectDetectionPage() {
                     <TableHead>Label</TableHead>
                     <TableHead className="w-[140px]">Confidence</TableHead>
                     <TableHead>Alert</TableHead>
+                    <TableHead className="w-[120px]">Clip</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                         Loading detection records…
                       </TableCell>
                     </TableRow>
                   ) : events.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                         <Camera className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         {hasActiveFilters
                           ? "No detections match your filters. Try broader search terms or clear filters."
@@ -429,7 +440,7 @@ export default function ObjectDetectionPage() {
                         <TableCell>
                           <div className="font-medium">{row.camera_code}</div>
                           <div className="text-xs text-muted-foreground truncate max-w-[160px]">
-                            {row.camera_name}
+                            {row.name ?? row.camera_name ?? row.camera_code}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -461,6 +472,29 @@ export default function ObjectDetectionPage() {
                             </Badge>
                           ) : (
                             <Badge variant="outline">Normal</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {row.clip_url ? (
+                            <details className="group">
+                              <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-primary hover:underline [&::-webkit-details-marker]:hidden">
+                                <Play className="h-3.5 w-3.5" />
+                                Play
+                              </summary>
+                              <video
+                                src={resolveMediaUrl(row.clip_url)}
+                                controls
+                                preload="metadata"
+                                playsInline
+                                className="mt-2 w-[220px] max-w-full rounded border bg-black"
+                              />
+                            </details>
+                          ) : row.clip_status === "pending" || row.clip_status === "recording" ? (
+                            <span className="text-xs text-muted-foreground">Recording…</span>
+                          ) : row.clip_status === "failed" ? (
+                            <span className="text-xs text-destructive">Clip failed</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </TableCell>
                       </TableRow>
