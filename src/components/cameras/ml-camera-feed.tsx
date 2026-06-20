@@ -21,8 +21,11 @@ type DetectionBox = {
 
 type MlCameraFeedProps = {
   camera: CameraRecord
+  pollMl?: boolean
   /** Overlays are baked into the ML live stream; kept for call-site compatibility. */
+  showOverlay?: boolean
   pollIntervalMs?: number
+  className?: string
   showBrandLogo?: boolean
   showFullscreenButton?: boolean
   onDetections?: (boxes: DetectionBox[]) => void
@@ -32,6 +35,12 @@ type MlCameraFeedProps = {
 
 const TEKEYE_LOGO_SRC = "/pakistan-customs-logo.png"
 
+function StreamBrandMarks() {
+  return (
+    <>
+      <div
+        className="absolute top-3 left-3 z-10 rounded-lg border border-white/10 bg-black/50 px-3 py-2 pointer-events-none backdrop-blur-sm"
+        aria-hidden
       >
         <img
           src={TEKEYE_LOGO_SRC}
@@ -122,6 +131,20 @@ export function MlCameraFeed({
     }
   }, [isFullscreen, exitFullscreen])
 
+  return (
+    <div
+      className={cn(
+        "flex flex-col",
+        isFullscreen && "fixed inset-0 z-[200] bg-black",
+        className
+      )}
+    >
+      <div
+        className={cn(
+          "relative aspect-video w-full overflow-hidden bg-black",
+          isFullscreen && "flex-1 aspect-auto min-h-0"
+        )}
+      >
         {streamSrc ? (
           <img
             key={`${streamSrc}-${streamRetry}`}
