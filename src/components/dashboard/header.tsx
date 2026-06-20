@@ -70,7 +70,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       </div>
 
       <span className="shrink-0 px-2 text-center font-bold text-[#101727] text-sm sm:text-base">
-        Version 1.0
+        {/* Version 1.0 */}
       </span>
 
       <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2">
