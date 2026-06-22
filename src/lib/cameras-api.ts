@@ -183,26 +183,12 @@ export type StreamCameraMeta = {
 
 const API = `${API_BASE_URL}/api`;
 
-const DEFAULT_ML_SERVICE_URL = "http://127.0.0.1:8100";
-
-export const ML_SERVICE_URL =
-  typeof import.meta !== "undefined" && import.meta.env?.VITE_ML_SERVICE_URL
-    ? String(import.meta.env.VITE_ML_SERVICE_URL).replace(/\/$/, "")
-    : DEFAULT_ML_SERVICE_URL;
-
-function mlStreamKey(camera: Pick<CameraRecord, "id" | "ml_stream_key">): string {
-  const key = (camera.ml_stream_key || "").trim();
-  if (key) return key;
-  return `cam-${camera.id}`;
-}
-
 export function getMlLiveMjpegUrl(
   camera: Pick<CameraRecord, "id" | "ml_stream_key" | "ml_live_stream_url" | "ml_live_stream_path">
 ): string | null {
   const direct = (camera.ml_live_stream_url || "").trim();
   if (direct) return direct;
-  if (!camera.id) return null;
-  return `${ML_SERVICE_URL}/live/cam/${mlStreamKey(camera)}/mjpeg`;
+  return null;
 }
 
 export function getRawMjpegUrl(
@@ -210,8 +196,7 @@ export function getRawMjpegUrl(
 ): string | null {
   const direct = (camera.raw_stream_url || "").trim();
   if (direct) return direct;
-  if (!camera.id) return null;
-  return `${ML_SERVICE_URL}/live/cam/${mlStreamKey(camera)}/mjpeg/raw`;
+  return null;
 }
 
 /** @deprecated Django MJPEG proxy removed — use getMlLiveMjpegUrl or getRawMjpegUrl */

@@ -24,7 +24,8 @@ function ensureDistIconPlugin() {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, projectRoot, "")
-  const devProxyTarget = env.VITE_DEV_API_PROXY_TARGET?.trim()
+  const apiBase = env.VITE_API_BASE_URL?.trim()
+  const devProxyTarget = apiBase ? undefined : "http://127.0.0.1:8000"
 
   return {
   root: projectRoot,
