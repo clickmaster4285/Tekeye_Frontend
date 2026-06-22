@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   fetchMlLiveDetections,
-  getCameraMjpegUrl,
   getMlLiveMjpegUrl,
+  getRawMjpegUrl,
   cameraSourceLabel,
   type CameraRecord,
 } from "@/lib/cameras-api"
@@ -62,7 +62,7 @@ function StreamBrandMarks() {
 
 export function MlCameraFeed({
   camera,
-  pollMl = true,
+  pollMl = false,
   pollIntervalMs = 2000,
   className = "",
   showBrandLogo = true,
@@ -76,9 +76,7 @@ export function MlCameraFeed({
   const [streamRetry, setStreamRetry] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const mlLiveSrc = getMlLiveMjpegUrl(camera)
-  const rawMjpegSrc = !mlLiveSrc && camera.is_rtsp && camera.stream_path
-    ? getCameraMjpegUrl(camera.stream_path)
-    : null
+  const rawMjpegSrc = !mlLiveSrc && camera.is_rtsp ? getRawMjpegUrl(camera) : null
   const streamSrc = mlLiveSrc || rawMjpegSrc
 
   const exitFullscreen = useCallback(() => setIsFullscreen(false), [])
@@ -159,8 +157,8 @@ export function MlCameraFeed({
               }
               setStreamError(
                 mlLiveSrc
-                  ? "ML annotated stream failed — wait for ML to connect or restart backend."
-                  : "Cannot load stream — verify NVR credentials, channel, and ffmpeg."
+                  ? "ML stream failed — ensure ML service is running and camera is registered."
+                  : "Cannot load stream — verify NVR credentials and ML service."
               )
             }}
           />

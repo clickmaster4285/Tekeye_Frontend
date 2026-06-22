@@ -7,6 +7,6 @@ export {
 
 export type CameraStreamListResponse = {
   cameras: import("@/lib/cameras-api").StreamCameraMeta[]
-  ffmpeg_available: boolean
   ml_service_enabled?: boolean
+  ml_service_public_url?: string
 }
