@@ -21,7 +21,10 @@ export function MlSystemStatus({ className = "" }: { className?: string }) {
       }
       if (streams) {
         const active = streams.cameras.length
-        setCameras(`${active} camera(s) · ffmpeg ${streams.ffmpeg_available ? "ok" : "missing"}`)
+        const mlUrl = streams.ml_service_public_url?.trim()
+        setCameras(
+          `${active} camera(s)${mlUrl ? ` · ML ${mlUrl}` : streams.ml_service_enabled ? " · ML direct" : ""}`
+        )
       }
     })
   }, [])

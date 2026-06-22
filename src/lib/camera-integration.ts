@@ -16,7 +16,7 @@ export type IntegrationCamera = {
   backendId: number
   purpose: CameraPurpose
   isRtsp: boolean
-  streamPath: string
+  mlLiveStreamUrl: string
   mlEnabled: boolean
   sourceLabel: string
   siteCode: string
@@ -38,7 +38,7 @@ export function cameraRecordToIntegration(cam: CameraRecord): IntegrationCamera 
     active: cam.is_active,
     purpose: cam.purpose,
     isRtsp: cam.is_rtsp,
-    streamPath: cam.stream_path,
+    mlLiveStreamUrl: cam.ml_live_stream_url || "",
     mlEnabled: cam.ml_enabled,
     sourceLabel: cameraSourceLabel(cam),
     siteCode: cam.site_code,
@@ -54,7 +54,7 @@ export async function loadIntegrationCamerasFromApi(): Promise<IntegrationCamera
 }
 
 export function hasPlayableVideo(cam: IntegrationCamera): boolean {
-  return cam.isRtsp && Boolean(cam.streamPath)
+  return cam.isRtsp && cam.mlEnabled
 }
 
 export function getIntegrationCameraLocations(cameras: IntegrationCamera[]): string[] {

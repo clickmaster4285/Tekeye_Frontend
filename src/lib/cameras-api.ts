@@ -80,7 +80,12 @@ export type CameraRecord = {
   is_active: boolean;
   ml_enabled: boolean;
   is_rtsp: boolean;
-  stream_path: string;
+  ml_stream_key?: string;
+  ml_live_stream_url?: string;
+  raw_stream_url?: string;
+  /** @deprecated Use ml_live_stream_url — Django proxy removed */
+  stream_path?: string;
+  /** @deprecated Use ml_live_stream_url */
   ml_live_stream_path?: string;
   created_at?: string;
   updated_at?: string;
@@ -167,11 +172,56 @@ export type StreamCameraMeta = {
   purpose_label: string;
   ml_enabled: boolean;
   is_rtsp: boolean;
-  stream_path: string;
+  ml_stream_key?: string;
+  ml_live_stream_url?: string;
+  raw_stream_url?: string;
+  /** @deprecated Use ml_live_stream_url */
+  stream_path?: string;
+  /** @deprecated Use ml_live_stream_url */
   ml_live_stream_path?: string;
 };
 
 const API = `${API_BASE_URL}/api`;
+
+const DEFAULT_ML_SERVICE_URL = "http://127.0.0.1:8100";
+
+export const ML_SERVICE_URL =
+  typeof import.meta !== "undefined" && import.meta.env?.VITE_ML_SERVICE_URL
+    ? String(import.meta.env.VITE_ML_SERVICE_URL).replace(/\/$/, "")
+    : DEFAULT_ML_SERVICE_URL;
+
+function mlStreamKey(camera: Pick<CameraRecord, "id" | "ml_stream_key">): string {
+  const key = (camera.ml_stream_key || "").trim();
+  if (key) return key;
+  return `cam-${camera.id}`;
+}
+
+export function getMlLiveMjpegUrl(
+  camera: Pick<CameraRecord, "id" | "ml_stream_key" | "ml_live_stream_url" | "ml_live_stream_path">
+): string | null {
+  const direct = (camera.ml_live_stream_url || "").trim();
+  if (direct) return direct;
+  if (!camera.id) return null;
+  return `${ML_SERVICE_URL}/live/cam/${mlStreamKey(camera)}/mjpeg`;
+}
+
+export function getRawMjpegUrl(
+  camera: Pick<CameraRecord, "id" | "ml_stream_key" | "raw_stream_url">
+): string | null {
+  const direct = (camera.raw_stream_url || "").trim();
+  if (direct) return direct;
+  if (!camera.id) return null;
+  return `${ML_SERVICE_URL}/live/cam/${mlStreamKey(camera)}/mjpeg/raw`;
+}
+
+/** @deprecated Django MJPEG proxy removed — use getMlLiveMjpegUrl or getRawMjpegUrl */
+export function getCameraMjpegUrl(streamPath: string): string {
+  const base = API_BASE_URL.replace(/\/$/, "");
+  const path = streamPath.startsWith("/") ? streamPath : `/${streamPath}`;
+  const token = getStoredToken();
+  const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+  return `${base}${path}${qs}`;
+}
 
 function parseList<T>(data: unknown): T[] {
   if (Array.isArray(data)) return data as T[];
@@ -191,20 +241,6 @@ function formatApiError(err: unknown, fallback: string): string {
       .join("; ");
   }
   return fallback;
-}
-
-export function getCameraMjpegUrl(streamPath: string): string {
-  const base = API_BASE_URL.replace(/\/$/, "");
-  const path = streamPath.startsWith("/") ? streamPath : `/${streamPath}`;
-  const token = getStoredToken();
-  const qs = token ? `?token=${encodeURIComponent(token)}` : "";
-  return `${base}${path}${qs}`;
-}
-
-export function getMlLiveMjpegUrl(camera: Pick<CameraRecord, "ml_live_stream_path">): string | null {
-  const path = (camera.ml_live_stream_path || "").trim();
-  if (!path) return null;
-  return getCameraMjpegUrl(path);
 }
 
 export function getPreviewMjpegUrl(nvrId: number, channel: number): string {
@@ -384,7 +420,7 @@ export async function fetchMlLiveDetections(cameraId: number): Promise<{
   }>;
   count: number;
 }> {
-  const res = await fetch(`${API}/cameras/${cameraId}/ml-live/detections/`, {
+  const res = await fetch(`${API}/cameras/${cameraId}/ml-live/detections/?save=false`, {
     headers: getAuthHeaders(),
     cache: "no-store",
   });
@@ -459,8 +495,8 @@ export async function fetchDetectionSummary(): Promise<DetectionSummary> {
 
 export async function fetchStreamCameras(): Promise<{
   cameras: StreamCameraMeta[];
-  ffmpeg_available: boolean;
   ml_service_enabled: boolean;
+  ml_service_public_url?: string;
 }> {
   const res = await fetch(`${API}/cameras/streams/`, {
     headers: getAuthHeaders(),
