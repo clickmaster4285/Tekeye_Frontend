@@ -40,32 +40,58 @@ type ParsedFace = {
 }
 
 let modelPromise: Promise<BlazeFaceModel> | null = null
+let modelReady = false
+
+const BLAZEFACE_MODEL_URL = `${import.meta.env.BASE_URL}models/blazeface/model.json`
 
 async function loadFaceModel(): Promise<BlazeFaceModel> {
   if (!modelPromise) {
     modelPromise = (async () => {
-      await import("@tensorflow/tfjs")
+      const tf = await import("@tensorflow/tfjs")
+      await import("@tensorflow/tfjs-backend-webgl")
+      await tf.setBackend("webgl")
+      await tf.ready()
       const blazeface = await import("@tensorflow-models/blazeface")
-      return (await blazeface.load()) as BlazeFaceModel
+      const model = (await blazeface.load({ modelUrl: BLAZEFACE_MODEL_URL })) as BlazeFaceModel
+      modelReady = true
+      return model
     })()
   }
   return modelPromise
 }
 
-/** Warm up the model when the camera panel opens. */
+/** True after BlazeFace has loaded at least once this session. */
+export function isHumanFaceModelReady(): boolean {
+  return modelReady
+}
+
+/** Warm up the model — call when HR/visitor photo UI mounts. */
 export function preloadHumanFaceModel(): void {
   void loadFaceModel().catch(() => {
     // ignore — validation will surface errors on capture
   })
 }
 
-function dataUrlToImage(dataUrl: string): Promise<HTMLImageElement> {
+function loadImageFromSrc(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => resolve(img)
     img.onerror = () => reject(new Error("Failed to load image"))
-    img.src = dataUrl
+    img.src = src
   })
+}
+
+function dataUrlToImage(dataUrl: string): Promise<HTMLImageElement> {
+  return loadImageFromSrc(dataUrl)
+}
+
+async function blobToImage(file: File | Blob): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(file)
+  try {
+    return await loadImageFromSrc(url)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 async function readNumber(value: unknown): Promise<number> {
@@ -265,15 +291,6 @@ export type HumanFaceValidationResult =
   | { ok: true }
   | { ok: false; message: string }
 
-function fileToDataUrl(file: File | Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result ?? ""))
-    reader.onerror = () => reject(new Error("Failed to read file"))
-    reader.readAsDataURL(file)
-  })
-}
-
 export type HumanFaceValidationOptions = {
   mode?: HumanFaceValidationMode
 }
@@ -282,13 +299,48 @@ function rejectionMessage(mode: HumanFaceValidationMode): string {
   return mode === "staff" ? NO_FACE_DETECTED_MESSAGE : NOT_HUMAN_PICTURE_MESSAGE
 }
 
+async function validateLoadedImage(
+  img: HTMLImageElement,
+  mode: HumanFaceValidationMode
+): Promise<HumanFaceValidationResult> {
+  const model = await loadFaceModel()
+  const rawFaces = await model.estimateFaces(img, false)
+  const parsedFaces = (
+    await Promise.all((rawFaces ?? []).map((face) => parseFace(face)))
+  ).filter((face): face is ParsedFace => face != null)
+
+  const failMessage = rejectionMessage(mode)
+
+  if (!parsedFaces.length) {
+    return { ok: false, message: failMessage }
+  }
+
+  for (const face of parsedFaces) {
+    if (await isLikelyHumanFace(face, img, mode)) {
+      return { ok: true }
+    }
+  }
+
+  return { ok: false, message: failMessage }
+}
+
 /** Validate an uploaded image file before accepting it. */
 export async function validateHumanFaceFile(
   file: File | Blob,
   options?: HumanFaceValidationOptions
 ): Promise<HumanFaceValidationResult> {
-  const dataUrl = await fileToDataUrl(file)
-  return validateHumanFaceImage(dataUrl, options)
+  const mode = options?.mode ?? "strict"
+  if (typeof window === "undefined") {
+    return { ok: true }
+  }
+
+  try {
+    const img = await blobToImage(file)
+    return await validateLoadedImage(img, mode)
+  } catch (err) {
+    console.warn("Human face validation failed:", err)
+    return { ok: false, message: rejectionMessage(mode) }
+  }
 }
 
 /**
@@ -304,25 +356,8 @@ export async function validateHumanFaceImage(
   }
 
   try {
-    const [model, img] = await Promise.all([loadFaceModel(), dataUrlToImage(dataUrl)])
-    const rawFaces = await model.estimateFaces(img, false)
-    const parsedFaces = (
-      await Promise.all((rawFaces ?? []).map((face) => parseFace(face)))
-    ).filter((face): face is ParsedFace => face != null)
-
-    const failMessage = rejectionMessage(mode)
-
-    if (!parsedFaces.length) {
-      return { ok: false, message: failMessage }
-    }
-
-    for (const face of parsedFaces) {
-      if (await isLikelyHumanFace(face, img, mode)) {
-        return { ok: true }
-      }
-    }
-
-    return { ok: false, message: failMessage }
+    const img = await dataUrlToImage(dataUrl)
+    return await validateLoadedImage(img, mode)
   } catch (err) {
     console.warn("Human face validation failed:", err)
     return { ok: false, message: rejectionMessage(mode) }

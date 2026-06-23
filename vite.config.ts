@@ -35,7 +35,12 @@ export default defineConfig(({ mode }) => {
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["pakistan-customs-logo.png", "icon.svg"],
+      includeAssets: [
+        "pakistan-customs-logo.png",
+        "icon.svg",
+        "models/blazeface/model.json",
+        "models/blazeface/group1-shard1of1.bin",
+      ],
       manifest: {
         name: "Pakistan Customs — Secure Access Portal",
         short_name: "Customs Portal",
@@ -65,7 +70,7 @@ export default defineConfig(({ mode }) => {
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,jpg,jpeg}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,jpg,jpeg,bin,json}"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/_/],
         cleanupOutdatedCaches: true,

@@ -1,4 +1,4 @@
-import { Camera, X } from "lucide-react"
+import { Camera, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -759,6 +759,12 @@ export function AddStaffStep1PersonalInfo({
                             className="h-full w-full rounded-md border border-border object-contain bg-muted"
                             decoding="async"
                           />
+                          {img.validating && (
+                            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-black/35">
+                              <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden />
+                              <span className="sr-only">Checking face…</span>
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={() => onRemovePhoto(idx)}

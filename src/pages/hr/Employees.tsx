@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select"
 import { ROUTES, getEmployeeDetailPath } from "@/routes/config"
 import { useToast } from "@/hooks/use-toast"
+import { preloadHumanFaceModel } from "@/lib/human-face-validation"
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100] as const
 const DEFAULT_PAGE_SIZE = 20
@@ -38,6 +39,10 @@ const DEFAULT_PAGE_SIZE = 20
 export default function EmployeesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
+  useEffect(() => {
+    preloadHumanFaceModel()
+  }, [])
   const { toast } = useToast()
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)

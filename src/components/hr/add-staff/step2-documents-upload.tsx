@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast"
 export type UploadValue = {
   file: File | null
   previewUrl: string | null
+  /** True while client-side face check is running for this preview. */
+  validating?: boolean
 }
 
 export interface UploadedFileItem {

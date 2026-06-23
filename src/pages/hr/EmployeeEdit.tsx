@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -17,8 +17,13 @@ import { AddStaffStep1PersonalInfo } from "@/components/hr/add-staff/step1-perso
 import { AddStaffStep2DocumentsUpload, type UploadValue } from "@/components/hr/add-staff/step2-documents-upload"
 import { AddStaffStep3LoginAccess } from "@/components/hr/add-staff/step3-login-access"
 import { Input } from "@/components/ui/input"
-import { validateHumanFaceFile } from "@/lib/human-face-validation"
-import { mergeStaffPhotos, primaryStaffPhotoFile, newStaffPhotoFiles } from "@/lib/staff-photo-utils"
+import {
+  ingestStaffPhotoFiles,
+  primaryStaffPhotoFile,
+  newStaffPhotoFiles,
+  revokeStaffUploadBlobs,
+} from "@/lib/staff-photo-utils"
+import { preloadHumanFaceModel } from "@/lib/human-face-validation"
 import { useToast } from "@/hooks/use-toast"
 import {
   STAFF_BPS_OPTIONS,
@@ -93,7 +98,6 @@ export default function EmployeeEditPage() {
   const [form, setForm] = useState<CreateStaffPayload | null>(null)
   const [staffPhotos, setStaffPhotos] = useState<UploadValue[]>([])
   const [cameraOpen, setCameraOpen] = useState(false)
-  const [staffPhotoValidating, setStaffPhotoValidating] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
@@ -103,6 +107,25 @@ export default function EmployeeEditPage() {
   const [cnicBack, setCnicBack] = useState<UploadValue>({ file: null, previewUrl: null })
   const [appointmentLetter, setAppointmentLetter] = useState<UploadValue>({ file: null, previewUrl: null })
   const [additionalDocument, setAdditionalDocument] = useState<UploadValue>({ file: null, previewUrl: null })
+
+  const uploadsRef = useRef({
+    staffPhotos,
+    cnicFront,
+    cnicBack,
+    appointmentLetter,
+    additionalDocument,
+  })
+  uploadsRef.current = {
+    staffPhotos,
+    cnicFront,
+    cnicBack,
+    appointmentLetter,
+    additionalDocument,
+  }
+
+  useEffect(() => {
+    preloadHumanFaceModel()
+  }, [])
 
   useEffect(() => {
     if (!staff || initialized) return
@@ -116,15 +139,8 @@ export default function EmployeeEditPage() {
   }, [staff, initialized])
 
   useEffect(() => {
-    return () => {
-      for (const p of staffPhotos) {
-        if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl)
-      }
-      for (const item of [cnicFront, cnicBack, appointmentLetter, additionalDocument]) {
-        if (item.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl)
-      }
-    }
-  }, [staffPhotos, cnicFront, cnicBack, appointmentLetter, additionalDocument])
+    return () => revokeStaffUploadBlobs(uploadsRef.current)
+  }, [])
 
   const updateUploadValue = (
     setter: React.Dispatch<React.SetStateAction<UploadValue>>,
@@ -139,34 +155,18 @@ export default function EmployeeEditPage() {
   }
 
   const addPhotos = async (files: File[]) => {
-    const max = 5
-    const remaining = Math.max(0, max - staffPhotos.length)
-    if (remaining <= 0 || files.length === 0) return
-
-    setStaffPhotoValidating(true)
-    try {
-      const accepted: UploadValue[] = []
-      for (const file of files.slice(0, remaining)) {
-        const result = await validateHumanFaceFile(file, { mode: "staff" })
-        if (!result.ok) {
-          toast({
-            title: result.message,
-            description: "Use a clear photo with the person's face visible (front or side).",
-            variant: "destructive",
-          })
-          continue
-        }
-        accepted.push({
-          file,
-          previewUrl: URL.createObjectURL(file),
+    await ingestStaffPhotoFiles({
+      files,
+      currentCount: staffPhotos.length,
+      setPhotos: setStaffPhotos,
+      onValidationError: (message) => {
+        toast({
+          title: message,
+          description: "Use a clear photo with the person's face visible (front or side).",
+          variant: "destructive",
         })
-      }
-      if (accepted.length > 0) {
-        setStaffPhotos((prev) => mergeStaffPhotos(prev, accepted))
-      }
-    } finally {
-      setStaffPhotoValidating(false)
-    }
+      },
+    })
   }
 
   const handleImageCapture = async (file: File) => {
