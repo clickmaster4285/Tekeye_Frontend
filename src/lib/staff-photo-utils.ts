@@ -1,4 +1,5 @@
 import type { UploadValue } from "@/components/hr/add-staff/step2-documents-upload"
+import { staffMediaPathFromUrl } from "@/lib/staff-api"
 import { preloadHumanFaceModel, validateHumanFaceFile } from "@/lib/human-face-validation"
 
 /** First newly uploaded file — used as profile_image on save. */
@@ -9,6 +10,14 @@ export function primaryStaffPhotoFile(photos: UploadValue[]): File | undefined {
 
 export function newStaffPhotoFiles(photos: UploadValue[]): File[] {
   return photos.map((p) => p.file).filter((f): f is File => f instanceof File)
+}
+
+/** Server-stored photo paths to retain on update (existing previews only). */
+export function existingStaffPhotoPaths(photos: UploadValue[]): string[] {
+  return photos
+    .filter((p) => !(p.file instanceof File) && p.previewUrl)
+    .map((p) => staffMediaPathFromUrl(p.previewUrl!))
+    .filter(Boolean)
 }
 
 function revokeBlobUrl(url: string | null | undefined): void {
