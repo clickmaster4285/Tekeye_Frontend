@@ -2,12 +2,15 @@ import { API_BASE_URL, getAuthHeaders, getAuthHeadersFormData } from "@/lib/api"
 
 export type AttendanceRecord = {
   id: number;
-  user: number;
-  username: string;
+  user: number | null;
+  staff?: number | null;
+  username: string | null;
+  staff_name?: string | null;
   date: string;
   check_in: string | null;
   check_out: string | null;
   image: string | null;
+  video?: string | null;
   source?: string;
 };
 

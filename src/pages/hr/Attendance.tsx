@@ -31,6 +31,7 @@ import { CameraCapture } from "@/components/camera-capture"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredUser } from "@/lib/auth"
 import { fetchStaff, type StaffRecord } from "@/lib/staff-api"
+import { resolveMediaUrl } from "@/lib/cameras-api"
 import {
   fetchAttendance,
   markCheckIn,
@@ -91,6 +92,8 @@ export default function AttendancePage() {
 
   useEffect(() => {
     loadData()
+    const timer = window.setInterval(loadData, 30_000)
+    return () => window.clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -255,7 +258,9 @@ export default function AttendancePage() {
           <CardHeader>
             <CardTitle>Mark attendance (camera)</CardTitle>
             <CardDescription>
-              Use face scan (ML) for automatic check-in/out, or manual mode to pick staff and mark with a photo.
+              Face scan at the kiosk, or use a camera with purpose &quot;Attendance Check-in&quot; or
+              &quot;Face Recognition&quot; for automatic check-in when staff are detected.
+              marking when enrolled staff are detected.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 w-full min-w-0">
@@ -401,20 +406,22 @@ export default function AttendancePage() {
               <p className="text-sm text-muted-foreground py-8">Loading attendance…</p>
             ) : (
             <div className="w-full max-w-full overflow-x-auto rounded-lg border pb-2">
-            <Table className="min-w-[760px]">
+            <Table className="min-w-[860px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>Employee</TableHead>
                   <TableHead>Username</TableHead>
                   <TableHead>Check-in</TableHead>
                   <TableHead>Check-out</TableHead>
+                  <TableHead>Clip</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredAttendance.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                       {attendance.length === 0
                         ? "No attendance records yet."
                         : `No records for ${filterDate}. Change the date or export all.`}
@@ -426,9 +433,36 @@ export default function AttendancePage() {
                     return (
                       <TableRow key={row.id}>
                         <TableCell className="font-mono text-muted-foreground">{row.date}</TableCell>
-                        <TableCell className="font-medium">{row.username}</TableCell>
+                        <TableCell className="font-medium">{row.staff_name ?? "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{row.username ?? "—"}</TableCell>
                         <TableCell>{formatTime(row.check_in)}</TableCell>
                         <TableCell>{formatTime(row.check_out)}</TableCell>
+                        <TableCell>
+                          {row.video ? (
+                            <video
+                              src={resolveMediaUrl(row.video)}
+                              controls
+                              preload="metadata"
+                              poster={row.image ? resolveMediaUrl(row.image) : undefined}
+                              className="h-16 w-28 rounded border bg-black object-cover"
+                            />
+                          ) : row.image ? (
+                            <a
+                              href={resolveMediaUrl(row.image)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block h-12 w-16 overflow-hidden rounded border bg-muted"
+                            >
+                              <img
+                                src={resolveMediaUrl(row.image)}
+                                alt={`${row.staff_name ?? row.username ?? "Employee"} attendance`}
+                                className="h-full w-full object-cover"
+                              />
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={
