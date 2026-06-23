@@ -257,21 +257,17 @@ export default function AttendancePage() {
         <Card className="w-full min-w-0">
           <CardHeader>
             <CardTitle>Mark attendance (camera)</CardTitle>
-            <CardDescription>
-              Face scan at the kiosk, or use a camera with purpose &quot;Attendance Check-in&quot; or
-              &quot;Face Recognition&quot; for automatic check-in when staff are detected.
-              marking when enrolled staff are detected.
-            </CardDescription>
+           
           </CardHeader>
           <CardContent className="space-y-4 w-full min-w-0">
-            {mlHealth && (
+            {/* {mlHealth && (
               <p className="text-xs text-muted-foreground">
                 ML:{" "}
                 {mlHealth.status === "ok"
                   ? `connected — ${mlHealth.known_faces ?? 0} known face(s)${mlHealth.yolo_available ? ", YOLO ready" : ", YOLO weights missing"}`
                   : mlHealth.message ?? mlHealth.status}
               </p>
-            )}
+            )} */}
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-2">
                 <Label>Mode</Label>
