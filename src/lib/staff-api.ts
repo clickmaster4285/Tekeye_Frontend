@@ -573,7 +573,7 @@ export type CreateStaffPayload = {
   branch_location?: string;
   manager?: string;
   bps?: string;
-  qualification?: string;
+  qualification?: string | string[];
   current_posting?: string;
   collector_name?: string;
   transferred_from?: string;
@@ -628,6 +628,21 @@ export type CreateStaffPayload = {
   additional_document?: File | null;
 };
 
+/** Resolve a staff media path for display in forms. */
+export function resolveStaffMediaUrl(path: string | null | undefined): string | undefined {
+  if (!path?.trim()) return undefined;
+  const p = path.trim();
+  if (p.startsWith("data:") || p.startsWith("http")) return p;
+  return `${API_BASE_URL}${p.startsWith("/") ? "" : "/"}${p}`;
+}
+
+const STAFF_FILE_FIELD_MAP: Record<string, string> = {
+  cnic_front: "id_proof_file",
+  cnic_back: "certificates_file",
+  appointment_letter: "joining_letter_file",
+  additional_document: "contract_file",
+};
+
 function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
   const fd = new FormData();
   const r = payload as Record<string, unknown>;
@@ -638,6 +653,10 @@ function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
     "username",
     "role",
     "staff_photos",
+    "cnic_front",
+    "cnic_back",
+    "appointment_letter",
+    "additional_document",
   ]);
 
   const fullName = String(r.full_name ?? "").trim();
@@ -682,6 +701,13 @@ function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
   const photos = r.staff_photos;
   if (Array.isArray(photos) && photos[0] instanceof File && !fd.has("profile_image")) {
     fd.append("profile_image", photos[0]);
+  }
+
+  for (const [sourceKey, targetKey] of Object.entries(STAFF_FILE_FIELD_MAP)) {
+    const file = r[sourceKey];
+    if (file instanceof File) {
+      fd.append(targetKey, file);
+    }
   }
 
   return fd;
