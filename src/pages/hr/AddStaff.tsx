@@ -12,6 +12,7 @@ import {
   ingestStaffPhotoFiles,
   primaryStaffPhotoFile,
   newStaffPhotoFiles,
+  existingStaffPhotoPaths,
   revokeStaffUploadBlobs,
 } from "@/lib/staff-photo-utils"
 import { preloadHumanFaceModel } from "@/lib/human-face-validation"
@@ -360,6 +361,7 @@ export default function AddStaffPage() {
         emergency_contact_address: form.emergency_contact_address,
         profile_image: primaryStaffPhotoFile(staffPhotos),
         staff_photos: newStaffPhotoFiles(staffPhotos),
+        staff_photos_keep: existingStaffPhotoPaths(staffPhotos),
         cnic_front: cnicFront.file ?? undefined,
         cnic_back: cnicBack.file ?? undefined,
         appointment_letter: appointmentLetter.file ?? undefined,

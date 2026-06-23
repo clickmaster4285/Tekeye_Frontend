@@ -6,6 +6,7 @@ import {
   downloadStaffDocument,
   deleteStaff,
   isDispositionStaffId,
+  resolveStaffPhotoGallery,
   type StaffRecord,
 } from "@/lib/staff-api"
 import { API_BASE_URL } from "@/lib/api"
@@ -332,6 +333,23 @@ export default function EmployeeDetailPage() {
           )}
         </div>
       </div>
+
+      {resolveStaffPhotoGallery(s).length > 0 && (
+        <div className="mb-8">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Recognition photos</p>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {resolveStaffPhotoGallery(s).map((url, idx) => (
+              <img
+                key={`${url}-${idx}`}
+                src={url}
+                alt={`${s.full_name ?? "Staff"} photo ${idx + 1}`}
+                className="h-40 w-32 shrink-0 rounded-md border border-border object-contain bg-muted"
+                decoding="async"
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

@@ -21,6 +21,8 @@ export type StaffRecord = {
   marital_status?: string | null;
   blood_group?: string | null;
   profile_image: string | null;
+  staff_photos?: string[] | null;
+  staff_photo_urls?: string[] | null;
   email?: string | null;
   phone_primary?: string | null;
   phone_alternate?: string | null;
@@ -135,6 +137,35 @@ export function resolveStaffProfileImageUrl(
   return `${API_BASE_URL}${p.startsWith("/") ? "" : "/"}${p}`;
 }
 
+/** All staff photo URLs for gallery display (falls back to profile_image). */
+export function resolveStaffPhotoGallery(staff: {
+  staff_photo_urls?: string[] | null;
+  staff_photos?: string[] | null;
+  profile_image?: string | null;
+}): string[] {
+  const fromUrls = (staff.staff_photo_urls ?? []).filter(Boolean) as string[];
+  if (fromUrls.length) return fromUrls;
+  const fromPaths = (staff.staff_photos ?? [])
+    .map((p) => resolveStaffProfileImageUrl(p))
+    .filter((u): u is string => Boolean(u));
+  if (fromPaths.length) return fromPaths;
+  const primary = resolveStaffProfileImageUrl(staff.profile_image);
+  return primary ? [primary] : [];
+}
+
+/** Extract stored media path from an absolute or relative staff photo URL. */
+export function staffMediaPathFromUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith("blob:") || trimmed.startsWith("data:")) return "";
+  const base = API_BASE_URL.replace(/\/$/, "");
+  let path = trimmed;
+  if (path.startsWith(base)) path = path.slice(base.length);
+  if (path.startsWith("/media/")) path = path.slice("/media/".length);
+  if (path.startsWith("media/")) path = path.slice("media/".length);
+  if (path.startsWith("/")) path = path.slice(1);
+  return path.startsWith("staff/") ? path : "";
+}
+
 export function staffInitials(fullName: string | null | undefined): string {
   const parts = (fullName ?? "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "—";
@@ -156,10 +187,18 @@ export function normalizeApiStaff(row: Record<string, unknown>): StaffRecord {
         ? String(rawProfile)
         : null;
   const base = row as unknown as StaffRecord;
+  const staff_photo_urls = Array.isArray(row.staff_photo_urls)
+    ? (row.staff_photo_urls as string[]).filter(Boolean)
+    : undefined;
+  const staff_photos = Array.isArray(row.staff_photos)
+    ? (row.staff_photos as string[]).filter(Boolean)
+    : undefined;
   return {
     ...base,
     id: Number(row.id),
     profile_image,
+    staff_photos: staff_photos ?? null,
+    staff_photo_urls: staff_photo_urls ?? null,
     phone: base.phone ?? base.phone_primary ?? null,
     user: base.user ?? userDetails?.username ?? null,
     user_details: userDetails ?? null,
@@ -616,6 +655,7 @@ export type CreateStaffPayload = {
   // Files
   profile_image?: File | null;
   staff_photos?: File[] | null;
+  staff_photos_keep?: string[] | null;
   resume_file?: File | null;
   joining_letter_file?: File | null;
   contract_file?: File | null;
@@ -656,6 +696,8 @@ function buildStaffMultipartFormData(
     "username",
     "role",
     "staff_photos",
+    "staff_photo_files",
+    "staff_photos_keep",
     "cnic_front",
     "cnic_back",
     "appointment_letter",
@@ -708,13 +750,18 @@ function buildStaffMultipartFormData(
 
   const explicitProfile = r.profile_image instanceof File ? r.profile_image : null;
   const photos = r.staff_photos;
-  const photoFromList =
-    Array.isArray(photos) && photos.find((f) => f instanceof File)
-      ? (photos.find((f) => f instanceof File) as File)
-      : null;
-  const profileFile = explicitProfile ?? photoFromList;
-  if (profileFile instanceof File) {
-    fd.append("profile_image", profileFile);
+  const photoFiles = Array.isArray(photos) ? photos.filter((f): f is File => f instanceof File) : [];
+  if (photoFiles.length > 0) {
+    for (const file of photoFiles) {
+      fd.append("staff_photo_files", file);
+    }
+  } else if (explicitProfile instanceof File) {
+    fd.append("profile_image", explicitProfile);
+  }
+
+  const keep = r.staff_photos_keep;
+  if (Array.isArray(keep) && keep.length > 0) {
+    fd.append("staff_photos_keep", JSON.stringify(keep.filter(Boolean)));
   }
 
   for (const [sourceKey, targetKey] of Object.entries(STAFF_FILE_FIELD_MAP)) {
@@ -780,7 +827,9 @@ export async function updateStaff(
 ): Promise<StaffRecord> {
   if (useStaffRestApi()) {
     const hasFile = Object.values(payload).some((v) => v instanceof File);
-    if (hasFile) {
+    const hasPhotoKeep = Array.isArray(payload.staff_photos_keep) && payload.staff_photos_keep.length > 0;
+    const hasNewPhotos = Array.isArray(payload.staff_photos) && payload.staff_photos.some((f) => f instanceof File);
+    if (hasFile || hasPhotoKeep || hasNewPhotos) {
       const fd = buildStaffMultipartFormData(payload as CreateStaffPayload, { omitReadonly: true });
       const res = await fetch(`${STAFF_ENDPOINT}${id}/`, {
         method: "PATCH",

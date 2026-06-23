@@ -6,7 +6,7 @@ import {
   fetchStaffById,
   isDispositionStaffId,
   resolveStaffMediaUrl,
-  resolveStaffProfileImageUrl,
+  resolveStaffPhotoGallery,
   updateStaff,
   type CreateStaffPayload,
   type StaffRecord,
@@ -21,6 +21,7 @@ import {
   ingestStaffPhotoFiles,
   primaryStaffPhotoFile,
   newStaffPhotoFiles,
+  existingStaffPhotoPaths,
   revokeStaffUploadBlobs,
 } from "@/lib/staff-photo-utils"
 import { preloadHumanFaceModel } from "@/lib/human-face-validation"
@@ -78,8 +79,10 @@ function staffToForm(staff: StaffRecord): CreateStaffPayload {
 }
 
 function initialPhotosFromStaff(staff: StaffRecord): UploadValue[] {
-  const url = resolveStaffProfileImageUrl(staff.profile_image)
-  return url ? [{ file: null, previewUrl: url }] : []
+  return resolveStaffPhotoGallery(staff).map((previewUrl) => ({
+    file: null,
+    previewUrl,
+  }))
 }
 
 export default function EmployeeEditPage() {
@@ -231,6 +234,7 @@ export default function EmployeeEditPage() {
         emergency_contact_phone: form.emergency_contact_phone || form.emergency_contact,
         profile_image: primaryStaffPhotoFile(staffPhotos),
         staff_photos: newStaffPhotoFiles(staffPhotos),
+        staff_photos_keep: existingStaffPhotoPaths(staffPhotos),
         cnic_front: cnicFront.file ?? undefined,
         cnic_back: cnicBack.file ?? undefined,
         appointment_letter: appointmentLetter.file ?? undefined,
