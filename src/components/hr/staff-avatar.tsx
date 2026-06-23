@@ -20,7 +20,7 @@ export function StaffAvatar({
 
   return (
     <Avatar className={cn(className)}>
-      {src ? <AvatarImage src={src} alt="" /> : null}
+      {src ? <AvatarImage src={src} alt="" className="object-cover" /> : null}
       <AvatarFallback className={fallbackClassName}>{initials}</AvatarFallback>
     </Avatar>
   )

@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast"
 export type UploadValue = {
   file: File | null
   previewUrl: string | null
+  /** True while client-side face check is running for this preview. */
+  validating?: boolean
 }
 
 export interface UploadedFileItem {
@@ -59,6 +61,76 @@ function getCameraErrorMessage(err: unknown): string {
 
 const uploadBoxClass =
   "flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 py-8 px-6 transition-colors hover:border-primary/40 hover:bg-muted/30"
+
+function isImagePreviewUrl(url: string): boolean {
+  if (isImageDataUrl(url)) return true
+  return /\.(jpe?g|png|gif|webp|bmp)(\?|$)/i.test(url)
+}
+
+function DocumentUploadPreview({
+  value,
+  label,
+  onRemove,
+}: {
+  value: UploadValue
+  label: string
+  onRemove: () => void
+}) {
+  if (!value.previewUrl && !value.file) return null
+
+  if (value.previewUrl && isImagePreviewUrl(value.previewUrl)) {
+    return (
+      <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <div className="relative max-w-md">
+          <img
+            src={value.previewUrl}
+            alt={label}
+            className="max-h-64 w-full rounded-md border border-border object-contain bg-white"
+            decoding="async"
+          />
+          <button
+            type="button"
+            onClick={onRemove}
+            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow"
+            aria-label={`Remove ${label}`}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {value.file ? (
+          <p className="text-sm text-muted-foreground">
+            {value.file.name} ({(value.file.size / 1024).toFixed(1)} KB)
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">Current file on server — upload to replace</p>
+        )}
+      </div>
+    )
+  }
+
+  if (!value.file) return null
+
+  return (
+    <div className="flex items-center gap-4 rounded-lg border border-[#93c5fd] bg-white px-4 py-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
+        <FileText className="h-5 w-5 text-[#2563eb]" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-base font-medium text-foreground">{value.file.name}</p>
+        <p className="text-sm text-muted-foreground">File size: {(value.file.size / 1024).toFixed(1)} KB</p>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3366FF] text-white hover:bg-[#2952CC] focus:outline-none focus:ring-2 focus:ring-ring"
+        aria-label="Remove file"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
 
 export function AddStaffStep2DocumentsUpload({
   cnicFront,
@@ -134,8 +206,8 @@ export function AddStaffStep2DocumentsUpload({
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
         audio: false,
       })
@@ -162,7 +234,7 @@ export function AddStaffStep2DocumentsUpload({
     canvas.width = w
     canvas.height = h
     ctx.drawImage(video, 0, 0, w, h)
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92)
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.98)
     
     // Convert dataUrl to File
     fetch(dataUrl)
@@ -284,25 +356,7 @@ export function AddStaffStep2DocumentsUpload({
             </button>
           </div>
         </div>
-        {cnicFront.file && cnicFront.previewUrl && (
-          <div className="flex items-center gap-4 rounded-lg border border-[#93c5fd] bg-white px-4 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <FileText className="h-5 w-5 text-[#2563eb]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-medium text-foreground">{cnicFront.file.name}</p>
-              <p className="text-sm text-muted-foreground">File size: {(cnicFront.file.size / 1024).toFixed(1)} KB</p>
-            </div>
-            <button
-              type="button"
-              onClick={onRemoveCnicFront}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3366FF] text-white hover:bg-[#2952CC] focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Remove file"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        <DocumentUploadPreview value={cnicFront} label="CNIC Front" onRemove={onRemoveCnicFront} />
       </div>
 
       {/* CNIC Back */}
@@ -338,25 +392,7 @@ export function AddStaffStep2DocumentsUpload({
             </button>
           </div>
         </div>
-        {cnicBack.file && cnicBack.previewUrl && (
-          <div className="flex items-center gap-4 rounded-lg border border-[#93c5fd] bg-white px-4 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <FileText className="h-5 w-5 text-[#2563eb]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-medium text-foreground">{cnicBack.file.name}</p>
-              <p className="text-sm text-muted-foreground">File size: {(cnicBack.file.size / 1024).toFixed(1)} KB</p>
-            </div>
-            <button
-              type="button"
-              onClick={onRemoveCnicBack}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3366FF] text-white hover:bg-[#2952CC] focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Remove file"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        <DocumentUploadPreview value={cnicBack} label="CNIC Back" onRemove={onRemoveCnicBack} />
       </div>
 
       {/* Appointment / Joining Letter */}
@@ -392,25 +428,11 @@ export function AddStaffStep2DocumentsUpload({
             </button>
           </div>
         </div>
-        {appointmentLetter.file && appointmentLetter.previewUrl && (
-          <div className="flex items-center gap-4 rounded-lg border border-[#93c5fd] bg-white px-4 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <FileText className="h-5 w-5 text-[#2563eb]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-medium text-foreground">{appointmentLetter.file.name}</p>
-              <p className="text-sm text-muted-foreground">File size: {(appointmentLetter.file.size / 1024).toFixed(1)} KB</p>
-            </div>
-            <button
-              type="button"
-              onClick={onRemoveAppointmentLetter}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3366FF] text-white hover:bg-[#2952CC] focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Remove file"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        <DocumentUploadPreview
+          value={appointmentLetter}
+          label="Appointment Letter"
+          onRemove={onRemoveAppointmentLetter}
+        />
       </div>
 
       {/* Additional Document */}
@@ -446,25 +468,11 @@ export function AddStaffStep2DocumentsUpload({
             </button>
           </div>
         </div>
-        {additionalDocument.file && additionalDocument.previewUrl && (
-          <div className="flex items-center gap-4 rounded-lg border border-[#93c5fd] bg-white px-4 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#dbeafe]">
-              <FileText className="h-5 w-5 text-[#2563eb]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-medium text-foreground">{additionalDocument.file.name}</p>
-              <p className="text-sm text-muted-foreground">File size: {(additionalDocument.file.size / 1024).toFixed(1)} KB</p>
-            </div>
-            <button
-              type="button"
-              onClick={onRemoveAdditionalDocument}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3366FF] text-white hover:bg-[#2952CC] focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Remove file"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        <DocumentUploadPreview
+          value={additionalDocument}
+          label="Additional Document"
+          onRemove={onRemoveAdditionalDocument}
+        />
       </div>
 
       {/* Camera panel – shown when capturing a document */}

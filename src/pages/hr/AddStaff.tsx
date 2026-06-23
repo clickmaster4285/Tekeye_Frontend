@@ -8,7 +8,13 @@ import { AddStaffStep1PersonalInfo } from "@/components/hr/add-staff/step1-perso
 import { AddStaffStep2DocumentsUpload, type UploadValue } from "@/components/hr/add-staff/step2-documents-upload"
 import { AddStaffStep3LoginAccess } from "@/components/hr/add-staff/step3-login-access"
 import { Input } from "@/components/ui/input"
-import { validateHumanFaceFile, NOT_HUMAN_PICTURE_MESSAGE } from "@/lib/human-face-validation"
+import {
+  ingestStaffPhotoFiles,
+  primaryStaffPhotoFile,
+  newStaffPhotoFiles,
+  revokeStaffUploadBlobs,
+} from "@/lib/staff-photo-utils"
+import { preloadHumanFaceModel } from "@/lib/human-face-validation"
 import { useToast } from "@/hooks/use-toast"
 import {
   STAFF_BPS_OPTIONS,
@@ -97,7 +103,6 @@ export default function AddStaffPage() {
   const [form, setForm] = useState<CreateStaffPayload>(emptyForm)
   const [staffPhotos, setStaffPhotos] = useState<UploadValue[]>([])
   const [cameraOpen, setCameraOpen] = useState(false)
-  const [staffPhotoValidating, setStaffPhotoValidating] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [employeeCategory, setEmployeeCategory] = useState<"new" | "existing">("new")
@@ -110,6 +115,24 @@ export default function AddStaffPage() {
 
   const savingDraftRef = useRef(false)
   const lastSavedDraftJsonRef = useRef<string>("")
+  const uploadsRef = useRef({
+    staffPhotos,
+    cnicFront,
+    cnicBack,
+    appointmentLetter,
+    additionalDocument,
+  })
+  uploadsRef.current = {
+    staffPhotos,
+    cnicFront,
+    cnicBack,
+    appointmentLetter,
+    additionalDocument,
+  }
+
+  useEffect(() => {
+    preloadHumanFaceModel()
+  }, [])
   const draftSnapshot = useMemo(() => {
     return {
       employeeCategory,
@@ -239,46 +262,22 @@ export default function AddStaffPage() {
   }, [draftSnapshot])
 
   useEffect(() => {
-    return () => {
-      for (const p of staffPhotos) {
-        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl)
-      }
-      if (cnicFront.previewUrl) URL.revokeObjectURL(cnicFront.previewUrl)
-      if (cnicBack.previewUrl) URL.revokeObjectURL(cnicBack.previewUrl)
-      if (appointmentLetter.previewUrl) URL.revokeObjectURL(appointmentLetter.previewUrl)
-      if (additionalDocument.previewUrl) URL.revokeObjectURL(additionalDocument.previewUrl)
-    }
-  }, [staffPhotos, cnicFront.previewUrl, cnicBack.previewUrl, appointmentLetter.previewUrl, additionalDocument.previewUrl])
+    return () => revokeStaffUploadBlobs(uploadsRef.current)
+  }, [])
 
   const addPhotos = async (files: File[]) => {
-    const max = 5
-    const remaining = Math.max(0, max - staffPhotos.length)
-    if (remaining <= 0 || files.length === 0) return
-
-    setStaffPhotoValidating(true)
-    try {
-      const accepted: UploadValue[] = []
-      for (const file of files.slice(0, remaining)) {
-        const result = await validateHumanFaceFile(file)
-        if (!result.ok) {
-          toast({
-            title: NOT_HUMAN_PICTURE_MESSAGE,
-            description: "Only clear photos of a person's face are allowed.",
-            variant: "destructive",
-          })
-          continue
-        }
-        accepted.push({
-          file,
-          previewUrl: URL.createObjectURL(file),
+    await ingestStaffPhotoFiles({
+      files,
+      currentCount: staffPhotos.length,
+      setPhotos: setStaffPhotos,
+      onValidationError: (message) => {
+        toast({
+          title: message,
+          description: "Use a clear photo with the person's face visible (front or side).",
+          variant: "destructive",
         })
-      }
-      if (accepted.length > 0) {
-        setStaffPhotos((prev) => [...prev, ...accepted].slice(0, max))
-      }
-    } finally {
-      setStaffPhotoValidating(false)
-    }
+      },
+    })
   }
 
   const handleImageCapture = async (file: File) => {
@@ -295,7 +294,7 @@ export default function AddStaffPage() {
   const handleRemovePhotoAt = (index: number) => {
     setStaffPhotos((prev) => {
       const item = prev[index]
-      if (item?.previewUrl) URL.revokeObjectURL(item.previewUrl)
+      if (item?.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl)
       return prev.filter((_, i) => i !== index)
     })
   }
@@ -305,7 +304,7 @@ export default function AddStaffPage() {
     file: File | null
   ) => {
     setter((prev) => {
-      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl)
+      if (prev.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.previewUrl)
       if (!file) return { file: null, previewUrl: null }
       const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null
       return { file, previewUrl }
@@ -327,7 +326,7 @@ export default function AddStaffPage() {
     }
     setStaffPhotos((prev) => {
       for (const p of prev) {
-        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl)
+        if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl)
       }
       return []
     })
@@ -359,8 +358,8 @@ export default function AddStaffPage() {
         emergency_contact_name: form.emergency_contact_name || (form.full_name ? `${form.full_name} Contact` : ""),
         emergency_contact_relationship: form.emergency_contact_relationship,
         emergency_contact_address: form.emergency_contact_address,
-        profile_image: staffPhotos[0]?.file ?? undefined,
-        staff_photos: staffPhotos.map((p) => p.file).filter((f): f is File => f instanceof File),
+        profile_image: primaryStaffPhotoFile(staffPhotos),
+        staff_photos: newStaffPhotoFiles(staffPhotos),
         cnic_front: cnicFront.file ?? undefined,
         cnic_back: cnicBack.file ?? undefined,
         appointment_letter: appointmentLetter.file ?? undefined,
