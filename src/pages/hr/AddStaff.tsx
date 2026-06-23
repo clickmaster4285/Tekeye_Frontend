@@ -10,86 +10,13 @@ import { AddStaffStep3LoginAccess } from "@/components/hr/add-staff/step3-login-
 import { Input } from "@/components/ui/input"
 import { validateHumanFaceFile, NOT_HUMAN_PICTURE_MESSAGE } from "@/lib/human-face-validation"
 import { useToast } from "@/hooks/use-toast"
-
-const ROLE_OPTIONS = [
-  { value: "ADMIN", label: "Super Admin (All Locations)" },
-  { value: "LOCATION_ADMIN", label: "Location Administrator" },
-  { value: "OPERATION_MANAGER", label: "Operation Manager" },
-  { value: "INSPECTOR", label: "Inspector" },
-  { value: "COLLECTOR", label: "Collector" },
-  { value: "DEPUTY_COLLECTOR", label: "Deputy Collector" },
-  { value: "ASSISTANT_COLLECTOR", label: "Assistant Collector" },
-  { value: "RECEPTIONIST", label: "Receptionist" },
-  { value: "GUARD", label: "Guard" },
-  { value: "HR", label: "Human Resource" },
-  { value: "WAREHOUSE_OFFICER", label: "Warehouse Officer" },
-  { value: "WAREHOUSE_SUPERINTENDENT", label: "Warehouse Superintendent" },
-  { value: "WAREHOUSE_IN_CHARGE", label: "Warehouse In-Charge" },
-  { value: "EXAMINATION_OFFICER", label: "Examination Officer" },
-  { value: "STOCK_CONTROLLER", label: "Stock Controller" },
-  { value: "IT_ADMIN", label: "IT Administrator" },
-  { value: "AUDITOR", label: "Auditor" },
-  { value: "DETECTION_OFFICER", label: "Detection Officer" },
-  { value: "FIR_OFFICER", label: "FIR Officer" },
-  { value: "INVESTIGATION_OFFICER", label: "Investigation Officer" },
-  { value: "SEIZING_OFFICER", label: "Seizing Officer" },
-]
-
-const DEPARTMENT_OPTIONS = [
-  { value: "HR", label: "Human Resources" },
-  { value: "FINANCE", label: "Finance" },
-  { value: "OPERATIONS", label: "Operations" },
-  { value: "IT", label: "Information Technology" },
-  { value: "SECURITY", label: "Security" },
-  { value: "ADMIN", label: "Administration" },
-  { value: "LEGAL", label: "Legal" },
-  { value: "PROCUREMENT", label: "Procurement" },
-  { value: "ENFORCEMENT", label: "Enforcement" },
-  { value: "CUSTOMS", label: "Customs" },
-]
-
-const EMPLOYMENT_TYPES = [
-  { value: "full-time", label: "Full Time" },
-  { value: "part-time", label: "Part Time" },
-  { value: "contract", label: "Contract" },
-  { value: "intern", label: "Intern" },
-  { value: "probation", label: "Probation" },
-]
-
-const BPS_OPTIONS = [
-  { value: "1", label: "BPS-1" },
-  { value: "2", label: "BPS-2" },
-  { value: "3", label: "BPS-3" },
-  { value: "4", label: "BPS-4" },
-  { value: "5", label: "BPS-5" },
-  { value: "6", label: "BPS-6" },
-  { value: "7", label: "BPS-7" },
-  { value: "8", label: "BPS-8" },
-  { value: "9", label: "BPS-9" },
-  { value: "10", label: "BPS-10" },
-  { value: "11", label: "BPS-11" },
-  { value: "12", label: "BPS-12" },
-  { value: "13", label: "BPS-13" },
-  { value: "14", label: "BPS-14" },
-  { value: "15", label: "BPS-15" },
-  { value: "16", label: "BPS-16" },
-  { value: "17", label: "BPS-17" },
-  { value: "18", label: "BPS-18" },
-  { value: "19", label: "BPS-19" },
-  { value: "20", label: "BPS-20" },
-  { value: "21", label: "BPS-21" },
-  { value: "22", label: "BPS-22" },
-]
-
-const QUALIFICATION_OPTIONS = [
-  { value: "matric", label: "Matric" },
-  { value: "intermediate", label: "Intermediate" },
-  { value: "bachelors", label: "Bachelor's Degree" },
-  { value: "masters", label: "Master's Degree" },
-  { value: "mphil", label: "M.Phil" },
-  { value: "phd", label: "PhD" },
-  { value: "others", label: "Others" },
-]
+import {
+  STAFF_BPS_OPTIONS,
+  STAFF_DEPARTMENT_OPTIONS,
+  STAFF_EMPLOYMENT_TYPE_OPTIONS,
+  STAFF_QUALIFICATION_OPTIONS,
+  STAFF_ROLE_OPTIONS,
+} from "@/lib/staff-form-options"
 
 const emptyForm: CreateStaffPayload = {
   personal_number: "",
@@ -519,11 +446,11 @@ export default function AddStaffPage() {
               onCancel={() => navigate(ROUTES.EMPLOYEES)}
               onReset={resetAll}
               onSaveAndContinue={nextStep}
-              roleOptions={ROLE_OPTIONS}
-              departmentOptions={DEPARTMENT_OPTIONS}
-              employmentTypeOptions={EMPLOYMENT_TYPES}
-              bpsOptions={BPS_OPTIONS}
-              qualificationOptions={QUALIFICATION_OPTIONS}
+              roleOptions={STAFF_ROLE_OPTIONS}
+              departmentOptions={STAFF_DEPARTMENT_OPTIONS}
+              employmentTypeOptions={STAFF_EMPLOYMENT_TYPE_OPTIONS}
+              bpsOptions={STAFF_BPS_OPTIONS}
+              qualificationOptions={STAFF_QUALIFICATION_OPTIONS}
             />
           )}
 

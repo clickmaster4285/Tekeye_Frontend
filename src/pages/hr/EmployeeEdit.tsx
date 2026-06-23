@@ -1,22 +1,80 @@
-import { useState, useEffect } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { fetchStaffById, updateStaff, isDispositionStaffId, type StaffRecord } from "@/lib/staff-api"
-import { ROUTES } from "@/routes/config"
-import { useToast } from "@/hooks/use-toast"
-import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  fetchStaffById,
+  isDispositionStaffId,
+  resolveStaffMediaUrl,
+  resolveStaffProfileImageUrl,
+  updateStaff,
+  type CreateStaffPayload,
+  type StaffRecord,
+} from "@/lib/staff-api"
+import { ROUTES } from "@/routes/config"
+import { StaffStepIndicator } from "@/components/hr/add-staff/staff-step-indicator"
+import { AddStaffStep1PersonalInfo } from "@/components/hr/add-staff/step1-personal-info"
+import { AddStaffStep2DocumentsUpload, type UploadValue } from "@/components/hr/add-staff/step2-documents-upload"
+import { AddStaffStep3LoginAccess } from "@/components/hr/add-staff/step3-login-access"
+import { Input } from "@/components/ui/input"
+import { validateHumanFaceFile, NOT_HUMAN_PICTURE_MESSAGE } from "@/lib/human-face-validation"
+import { useToast } from "@/hooks/use-toast"
+import {
+  STAFF_BPS_OPTIONS,
+  STAFF_DEPARTMENT_OPTIONS,
+  STAFF_EMPLOYMENT_TYPE_OPTIONS,
+  STAFF_QUALIFICATION_OPTIONS,
+  STAFF_ROLE_OPTIONS,
+} from "@/lib/staff-form-options"
+
+function uploadValueFromPath(path: string | null | undefined): UploadValue {
+  const url = resolveStaffMediaUrl(path)
+  if (!url) return { file: null, previewUrl: null }
+  const isImage = /\.(jpe?g|png|gif|webp|bmp)$/i.test(url)
+  return { file: null, previewUrl: isImage ? url : null }
+}
+
+function staffToForm(staff: StaffRecord): CreateStaffPayload {
+  return {
+    personal_number: staff.personal_number ?? "",
+    has_login: Boolean(staff.user_details || staff.user),
+    login_username: staff.user_details?.username ?? "",
+    password: "",
+    email: staff.email ?? "",
+    role: staff.role ?? staff.user_details?.role ?? "RECEPTIONIST",
+    phone: staff.phone_primary ?? staff.phone ?? "",
+    full_name: staff.full_name ?? "",
+    father_name: staff.father_name ?? "",
+    gender: staff.gender ?? "",
+    cnic: staff.cnic ?? staff.national_id ?? "",
+    address: staff.address ?? staff.street_address ?? "",
+    date_of_birth: staff.date_of_birth ?? "",
+    joining_date: staff.joining_date ?? "",
+    department: staff.department ?? "",
+    designation: staff.designation ?? "",
+    employment_type: staff.employment_type ?? "",
+    emergency_contact: staff.emergency_contact ?? staff.emergency_contact_phone ?? "",
+    emergency_contact_name: staff.emergency_contact_name ?? "",
+    emergency_contact_relationship: staff.emergency_contact_relationship ?? "",
+    emergency_contact_phone: staff.emergency_contact_phone ?? "",
+    emergency_contact_address: staff.emergency_contact_address ?? "",
+    bps: staff.bps ?? "",
+    qualification: staff.qualification ?? "",
+    current_posting: staff.current_posting ?? staff.branch_location ?? "",
+    collector_name: staff.collector_name ?? "",
+    transferred_from: staff.transferred_from ?? "",
+    transferred_to: staff.transferred_to ?? "",
+    job_status: staff.job_status ?? "",
+    notes: staff.notes ?? "",
+    employee_id: staff.employee_id ?? "",
+    branch_location: staff.branch_location ?? "",
+  }
+}
+
+function initialPhotosFromStaff(staff: StaffRecord): UploadValue[] {
+  const url = resolveStaffProfileImageUrl(staff.profile_image)
+  return url ? [{ file: null, previewUrl: url }] : []
+}
 
 export default function EmployeeEditPage() {
   const { id } = useParams<{ id: string }>()
@@ -31,87 +89,162 @@ export default function EmployeeEditPage() {
     enabled: Number.isInteger(staffId),
   })
 
-  const [saving, setSaving] = useState(false)
-  const [fullName, setFullName] = useState("")
-  const [fatherName, setFatherName] = useState("")
-  const [designation, setDesignation] = useState("")
-  const [department, setDepartment] = useState("")
-  const [email, setEmail] = useState("")
-  const [phonePrimary, setPhonePrimary] = useState("")
-  const [jobStatus, setJobStatus] = useState("")
-  const [notes, setNotes] = useState("")
-  const [personalNumber, setPersonalNumber] = useState("")
-  const [employeeId, setEmployeeId] = useState("")
-  const [bps, setBps] = useState("")
-  const [qualification, setQualification] = useState("")
-  const [currentPosting, setCurrentPosting] = useState("")
-  const [collectorName, setCollectorName] = useState("")
-  const [transferredFrom, setTransferredFrom] = useState("")
-  const [transferredTo, setTransferredTo] = useState("")
-  const [employmentType, setEmploymentType] = useState("")
-  const [branchLocation, setBranchLocation] = useState("")
+  const [form, setForm] = useState<CreateStaffPayload | null>(null)
+  const [staffPhotos, setStaffPhotos] = useState<UploadValue[]>([])
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [staffPhotoValidating, setStaffPhotoValidating] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [initialized, setInitialized] = useState(false)
+
+  const [cnicFront, setCnicFront] = useState<UploadValue>({ file: null, previewUrl: null })
+  const [cnicBack, setCnicBack] = useState<UploadValue>({ file: null, previewUrl: null })
+  const [appointmentLetter, setAppointmentLetter] = useState<UploadValue>({ file: null, previewUrl: null })
+  const [additionalDocument, setAdditionalDocument] = useState<UploadValue>({ file: null, previewUrl: null })
 
   useEffect(() => {
-    if (staff) {
-      const s = staff as StaffRecord
-      setFullName(s.full_name ?? "")
-      setFatherName(s.father_name ?? "")
-      setDesignation(s.designation ?? "")
-      setDepartment(s.department ?? "")
-      setEmail(s.email ?? "")
-      setPhonePrimary(s.phone_primary ?? s.phone ?? "")
-      setJobStatus(s.job_status ?? "")
-      setNotes(s.notes ?? "")
-      setPersonalNumber(s.personal_number ?? "")
-      setEmployeeId(s.employee_id ?? "")
-      setBps(s.bps ?? "")
-      setQualification(s.qualification ?? "")
-      setCurrentPosting(s.current_posting ?? s.branch_location ?? "")
-      setCollectorName(s.collector_name ?? "")
-      setTransferredFrom(s.transferred_from ?? "")
-      setTransferredTo(s.transferred_to ?? "")
-      setEmploymentType(s.employment_type ?? "")
-      setBranchLocation(s.branch_location ?? "")
-    }
-  }, [staff])
+    if (!staff || initialized) return
+    setForm(staffToForm(staff))
+    setStaffPhotos(initialPhotosFromStaff(staff))
+    setCnicFront(uploadValueFromPath(staff.id_proof_file))
+    setCnicBack(uploadValueFromPath(staff.certificates_file))
+    setAppointmentLetter(uploadValueFromPath(staff.joining_letter_file))
+    setAdditionalDocument(uploadValueFromPath(staff.contract_file))
+    setInitialized(true)
+  }, [staff, initialized])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!Number.isInteger(staffId)) return
-    setSaving(true)
+  useEffect(() => {
+    return () => {
+      for (const p of staffPhotos) {
+        if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl)
+      }
+      for (const item of [cnicFront, cnicBack, appointmentLetter, additionalDocument]) {
+        if (item.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl)
+      }
+    }
+  }, [staffPhotos, cnicFront, cnicBack, appointmentLetter, additionalDocument])
+
+  const updateUploadValue = (
+    setter: React.Dispatch<React.SetStateAction<UploadValue>>,
+    file: File | null
+  ) => {
+    setter((prev) => {
+      if (prev.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(prev.previewUrl)
+      if (!file) return { file: null, previewUrl: null }
+      const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null
+      return { file, previewUrl }
+    })
+  }
+
+  const addPhotos = async (files: File[]) => {
+    const max = 5
+    const remaining = Math.max(0, max - staffPhotos.length)
+    if (remaining <= 0 || files.length === 0) return
+
+    setStaffPhotoValidating(true)
     try {
-      await updateStaff(staffId, {
-        full_name: fullName,
-        father_name: fatherName || undefined,
-        designation,
-        department,
-        email: email || undefined,
-        phone_primary: phonePrimary || undefined,
-        job_status: jobStatus || undefined,
-        notes: notes || undefined,
-        personal_number: personalNumber || undefined,
-        employee_id: employeeId || undefined,
-        bps: bps || undefined,
-        qualification: qualification || undefined,
-        current_posting: currentPosting || undefined,
-        collector_name: collectorName || undefined,
-        transferred_from: transferredFrom || undefined,
-        transferred_to: transferredTo || undefined,
-        employment_type: employmentType || undefined,
-        branch_location: branchLocation || undefined,
-      })
+      const accepted: UploadValue[] = []
+      for (const file of files.slice(0, remaining)) {
+        const result = await validateHumanFaceFile(file)
+        if (!result.ok) {
+          toast({
+            title: NOT_HUMAN_PICTURE_MESSAGE,
+            description: "Only clear photos of a person's face are allowed.",
+            variant: "destructive",
+          })
+          continue
+        }
+        accepted.push({
+          file,
+          previewUrl: URL.createObjectURL(file),
+        })
+      }
+      if (accepted.length > 0) {
+        setStaffPhotos((prev) => [...prev, ...accepted].slice(0, max))
+      }
+    } finally {
+      setStaffPhotoValidating(false)
+    }
+  }
+
+  const handleImageCapture = async (file: File) => {
+    await addPhotos([file])
+    setCameraOpen(false)
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/"))
+    if (files.length) await addPhotos(files)
+    e.target.value = ""
+  }
+
+  const handleRemovePhotoAt = (index: number) => {
+    setStaffPhotos((prev) => {
+      const item = prev[index]
+      if (item?.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(item.previewUrl)
+      return prev.filter((_, i) => i !== index)
+    })
+  }
+
+  const resetFromStaff = () => {
+    if (!staff) return
+    setForm(staffToForm(staff))
+    setCurrentStep(1)
+    setSubmitError(null)
+    setStaffPhotos((prev) => {
+      for (const p of prev) {
+        if (p.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(p.previewUrl)
+      }
+      return initialPhotosFromStaff(staff)
+    })
+    updateUploadValue(setCnicFront, null)
+    updateUploadValue(setCnicBack, null)
+    updateUploadValue(setAppointmentLetter, null)
+    updateUploadValue(setAdditionalDocument, null)
+    setCnicFront(uploadValueFromPath(staff.id_proof_file))
+    setCnicBack(uploadValueFromPath(staff.certificates_file))
+    setAppointmentLetter(uploadValueFromPath(staff.joining_letter_file))
+    setAdditionalDocument(uploadValueFromPath(staff.contract_file))
+  }
+
+  const nextStep = () => setCurrentStep((s) => Math.min(3, s + 1))
+  const prevStep = () => setCurrentStep((s) => Math.max(1, s - 1))
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!Number.isInteger(staffId) || !form) return
+    setSubmitError(null)
+    setSubmitting(true)
+    try {
+      const qualification = Array.isArray(form.qualification)
+        ? form.qualification.join(", ")
+        : form.qualification
+
+      const payload: Partial<CreateStaffPayload> = {
+        ...form,
+        qualification,
+        phone_primary: form.phone,
+        street_address: form.address,
+        date_of_joining: form.joining_date,
+        emergency_contact_phone: form.emergency_contact_phone || form.emergency_contact,
+        profile_image: staffPhotos[0]?.file ?? undefined,
+        staff_photos: staffPhotos.map((p) => p.file).filter((f): f is File => f instanceof File),
+        cnic_front: cnicFront.file ?? undefined,
+        cnic_back: cnicBack.file ?? undefined,
+        appointment_letter: appointmentLetter.file ?? undefined,
+        additional_document: additionalDocument.file ?? undefined,
+      }
+
+      await updateStaff(staffId, payload)
       toast({ title: "Employee updated", description: "Changes have been saved." })
-      queryClient.invalidateQueries({ queryKey: ["staff", staffId] })
-      queryClient.invalidateQueries({ queryKey: ["staff"] })
+      void queryClient.invalidateQueries({ queryKey: ["staff", staffId] })
+      void queryClient.invalidateQueries({ queryKey: ["staff"] })
       navigate(`/employees/${staffId}`)
     } catch (err) {
-      toast({
-        title: "Update failed",
-        description: err instanceof Error ? err.message : "Could not update employee",
-        variant: "destructive",
-      })
+      setSubmitError(err instanceof Error ? err.message : "Failed to update employee")
     } finally {
-      setSaving(false)
+      setSubmitting(false)
     }
   }
 
@@ -138,207 +271,126 @@ export default function EmployeeEditPage() {
     )
   }
 
-  if (isError || !staff) {
+  if (isError || !staff || !form) {
     return (
       <div className="w-full px-4 sm:px-6 py-8">
         <p className="text-destructive mb-4">Employee not found.</p>
-        <Button variant="outline" asChild>
-          <Link to={ROUTES.EMPLOYEES}>Back to Employees</Link>
-        </Button>
+        <Link to={ROUTES.EMPLOYEES} className="text-primary hover:underline">
+          Back to Employees
+        </Link>
       </div>
     )
   }
 
   const s = staff as StaffRecord
+  const hasExistingLogin = Boolean(s.user_details || s.user)
 
   return (
-    <ModulePageLayout
-      title="Edit employee"
-      description={`Update details for ${s.full_name ?? "employee"}.`}
-      breadcrumbs={[
-        { label: "HR", href: ROUTES.EMPLOYEES },
-        { label: "Employees", href: ROUTES.EMPLOYEES },
-        { label: s.full_name ?? "Detail", href: `/employees/${s.id}` },
-        { label: "Edit" },
-      ]}
-    >
-      <Card className="max-w-4xl">
-        <CardHeader>
-          <CardTitle>Employee record</CardTitle>
-          <CardDescription>
-            Edit fields stored for this employee. CNIC is managed when the record is created.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Employee name *</Label>
-                <Input
-                  id="full_name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="father_name">Father&apos;s name</Label>
-                <Input
-                  id="father_name"
-                  value={fatherName}
-                  onChange={(e) => setFatherName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="personal_number">Personal number</Label>
-                <Input
-                  id="personal_number"
-                  value={personalNumber}
-                  onChange={(e) => setPersonalNumber(e.target.value)}
-                  placeholder="Employee personal / service number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="designation">Designation *</Label>
-                <Input
-                  id="designation"
-                  value={designation}
-                  onChange={(e) => setDesignation(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department">Department *</Label>
-                <Input
-                  id="department"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Mobile (primary)</Label>
-                <Input
-                  id="phone"
-                  value={phonePrimary}
-                  onChange={(e) => setPhonePrimary(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="employee_id">Employee ID</Label>
-                <Input
-                  id="employee_id"
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                  placeholder="Official employee / service ID"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bps">BPS</Label>
-                <Input id="bps" value={bps} onChange={(e) => setBps(e.target.value)} />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="qualification">Qualification</Label>
-                <Input
-                  id="qualification"
-                  value={qualification}
-                  onChange={(e) => setQualification(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="current_posting">Current place of posting</Label>
-                <Input
-                  id="current_posting"
-                  value={currentPosting}
-                  onChange={(e) => setCurrentPosting(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="branch_location">Branch / location</Label>
-                <Input
-                  id="branch_location"
-                  value={branchLocation}
-                  onChange={(e) => setBranchLocation(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="collector_name">Collector name</Label>
-                <Input
-                  id="collector_name"
-                  value={collectorName}
-                  onChange={(e) => setCollectorName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="transferred_from">Transferred from</Label>
-                <Input
-                  id="transferred_from"
-                  value={transferredFrom}
-                  onChange={(e) => setTransferredFrom(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="transferred_to">Transferred to</Label>
-                <Input
-                  id="transferred_to"
-                  value={transferredTo}
-                  onChange={(e) => setTransferredTo(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="employment_type">Employment type</Label>
-                <Input
-                  id="employment_type"
-                  value={employmentType}
-                  onChange={(e) => setEmploymentType(e.target.value)}
-                  placeholder="e.g. Permanent, Contract"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Job status</Label>
-                <Select value={jobStatus || "none"} onValueChange={(v) => setJobStatus(v === "none" ? "" : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Not set</SelectItem>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="ON_LEAVE">On leave</SelectItem>
-                    <SelectItem value="PROBATION">Probation</SelectItem>
-                    <SelectItem value="RESIGNED">Resigned</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={saving} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                {saving ? "Saving…" : "Save changes"}
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={`/employees/${s.id}`}>Cancel</Link>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </ModulePageLayout>
+    <div className="w-full px-4">
+      <nav className="text-base text-muted-foreground mb-6 flex flex-wrap items-center gap-x-2 gap-y-1" aria-label="Breadcrumb">
+        <Link to={ROUTES.DASHBOARD} className="hover:text-foreground transition-colors">Home</Link>
+        <span aria-hidden className="text-muted-foreground/70">/</span>
+        <span className="text-muted-foreground">HR</span>
+        <span aria-hidden className="text-muted-foreground/70">/</span>
+        <Link to={ROUTES.EMPLOYEES} className="hover:text-foreground transition-colors">Employees</Link>
+        <span aria-hidden className="text-muted-foreground/70">/</span>
+        <Link to={`/employees/${s.id}`} className="hover:text-foreground transition-colors">
+          {s.full_name ?? "Employee"}
+        </Link>
+        <span aria-hidden className="text-muted-foreground/70">/</span>
+        <span className="text-[#3b82f6] font-medium" aria-current="page">
+          Edit
+        </span>
+      </nav>
+
+      <div className="mb-6">
+        <h1 className="text-[22px] font-bold tracking-tight text-foreground">Edit Employee</h1>
+        <p className="text-base text-muted-foreground mt-1">
+          Update employee details, photos, and documents.
+        </p>
+      </div>
+
+      <StaffStepIndicator currentStep={currentStep} />
+
+      <form id="edit-staff-form" onSubmit={handleSave} className="mt-6">
+        <Input
+          id="profile_image"
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+        {submitError && (
+          <div className="p-4 bg-destructive/10 border border-destructive text-destructive rounded-md text-sm mb-6">
+            {submitError}
+          </div>
+        )}
+
+        <div className="bg-card rounded-xl border border-border shadow-sm p-4 sm:p-6 mt-6">
+          {currentStep === 1 && (
+            <AddStaffStep1PersonalInfo
+              employeeCategory="existing"
+              onEmployeeCategoryChange={() => {}}
+              form={form}
+              updateForm={(patch) => setForm((f) => (f ? { ...f, ...patch } : f))}
+              staffPhotos={staffPhotos}
+              cameraOpen={cameraOpen}
+              onOpenCamera={() => setCameraOpen(true)}
+              onCaptureFromCamera={handleImageCapture}
+              onCloseCamera={() => setCameraOpen(false)}
+              onUploadPhotoClick={() => document.getElementById("profile_image")?.click()}
+              onRemovePhoto={handleRemovePhotoAt}
+              onCancel={() => navigate(`/employees/${s.id}`)}
+              onReset={resetFromStaff}
+              onSaveAndContinue={nextStep}
+              roleOptions={STAFF_ROLE_OPTIONS}
+              departmentOptions={STAFF_DEPARTMENT_OPTIONS}
+              employmentTypeOptions={STAFF_EMPLOYMENT_TYPE_OPTIONS}
+              bpsOptions={STAFF_BPS_OPTIONS}
+              qualificationOptions={STAFF_QUALIFICATION_OPTIONS}
+            />
+          )}
+
+          {currentStep === 2 && (
+            <AddStaffStep2DocumentsUpload
+              cnicFront={cnicFront}
+              cnicBack={cnicBack}
+              appointmentLetter={appointmentLetter}
+              additionalDocument={additionalDocument}
+              onPickCnicFront={(file) => updateUploadValue(setCnicFront, file)}
+              onPickCnicBack={(file) => updateUploadValue(setCnicBack, file)}
+              onPickAppointmentLetter={(file) => updateUploadValue(setAppointmentLetter, file)}
+              onPickAdditionalDocument={(file) => updateUploadValue(setAdditionalDocument, file)}
+              onRemoveCnicFront={() => updateUploadValue(setCnicFront, null)}
+              onRemoveCnicBack={() => updateUploadValue(setCnicBack, null)}
+              onRemoveAppointmentLetter={() => updateUploadValue(setAppointmentLetter, null)}
+              onRemoveAdditionalDocument={() => updateUploadValue(setAdditionalDocument, null)}
+              onCancel={() => navigate(`/employees/${s.id}`)}
+              onReset={resetFromStaff}
+              onPrevious={prevStep}
+              onSaveAndContinue={nextStep}
+            />
+          )}
+
+          {currentStep === 3 && (
+            <AddStaffStep3LoginAccess
+              form={form}
+              updateForm={(patch) => setForm((f) => (f ? { ...f, ...patch } : f))}
+              onCancel={() => navigate(`/employees/${s.id}`)}
+              onReset={resetFromStaff}
+              onPrevious={prevStep}
+              onFinish={() => {
+                const formEl = document.getElementById("edit-staff-form") as HTMLFormElement | null
+                formEl?.requestSubmit()
+              }}
+              submitting={submitting}
+              mode="edit"
+              hasExistingLogin={hasExistingLogin}
+            />
+          )}
+        </div>
+      </form>
+    </div>
   )
 }

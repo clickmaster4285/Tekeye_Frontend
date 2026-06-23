@@ -17,6 +17,8 @@ export function AddStaffStep3LoginAccess({
   onPrevious,
   onFinish,
   submitting,
+  mode = "create",
+  hasExistingLogin = false,
 }: {
   form: AddStaffStep3Form
   updateForm: (patch: Partial<AddStaffStep3Form>) => void
@@ -25,6 +27,8 @@ export function AddStaffStep3LoginAccess({
   onPrevious: () => void
   onFinish: () => void
   submitting: boolean
+  mode?: "create" | "edit"
+  hasExistingLogin?: boolean
 }) {
   const [errors, setErrors] = useState<{ username?: string; password?: string }>({})
 
@@ -40,7 +44,9 @@ export function AddStaffStep3LoginAccess({
     }
 
     if (!form.password?.trim()) {
-      newErrors.password = "Password is required"
+      if (!(mode === "edit" && hasExistingLogin)) {
+        newErrors.password = "Password is required"
+      }
     } else if (form.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters"
     }
@@ -65,7 +71,9 @@ export function AddStaffStep3LoginAccess({
             <div className="min-w-0">
               <p className="text-base font-medium text-foreground">Give this employee login access?</p>
               <p className="text-sm text-muted-foreground">
-                If enabled, they can sign in using provided credentials. Username and password are required.
+                {mode === "edit" && hasExistingLogin
+                  ? "Leave password blank to keep the current password. Enter a new one only to change it."
+                  : "If enabled, they can sign in using provided credentials. Username and password are required."}
               </p>
             </div>
             <Switch
@@ -105,11 +113,13 @@ export function AddStaffStep3LoginAccess({
               <div className="space-y-2">
                 <Label className="text-base text-foreground">
                   Password
-                  {form.has_login && <span className="text-destructive ml-1">*</span>}
+                  {form.has_login && !(mode === "edit" && hasExistingLogin) && (
+                    <span className="text-destructive ml-1">*</span>
+                  )}
                 </Label>
                 <Input
                   type="password"
-                  placeholder="Enter password"
+                  placeholder={mode === "edit" && hasExistingLogin ? "Leave blank to keep current" : "Enter password"}
                   value={form.password || ""}
                   onChange={(e) => {
                     updateForm({ password: e.target.value })
@@ -128,7 +138,9 @@ export function AddStaffStep3LoginAccess({
             </div>
           ) : (
             <div className="mt-4 text-sm text-muted-foreground bg-white/50 p-3 rounded-md border border-border">
-              This employee will be created without login access.
+              {mode === "edit"
+                ? "This employee will be saved without login access changes."
+                : "This employee will be created without login access."}
             </div>
           )}
         </div>
@@ -169,7 +181,13 @@ export function AddStaffStep3LoginAccess({
             disabled={submitting}
             className="shrink-0 rounded-md bg-[#3366FF] px-5 py-2.5 text-base font-normal text-white transition-colors hover:bg-[#2952CC] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "Adding Staff..." : "Add Staff"}
+            {submitting
+              ? mode === "edit"
+                ? "Saving…"
+                : "Adding Staff..."
+              : mode === "edit"
+                ? "Save changes"
+                : "Add Staff"}
           </button>
         </div>
       </div>
