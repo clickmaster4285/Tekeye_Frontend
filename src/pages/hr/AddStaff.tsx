@@ -8,7 +8,8 @@ import { AddStaffStep1PersonalInfo } from "@/components/hr/add-staff/step1-perso
 import { AddStaffStep2DocumentsUpload, type UploadValue } from "@/components/hr/add-staff/step2-documents-upload"
 import { AddStaffStep3LoginAccess } from "@/components/hr/add-staff/step3-login-access"
 import { Input } from "@/components/ui/input"
-import { validateHumanFaceFile, NOT_HUMAN_PICTURE_MESSAGE } from "@/lib/human-face-validation"
+import { validateHumanFaceFile } from "@/lib/human-face-validation"
+import { mergeStaffPhotos, primaryStaffPhotoFile, newStaffPhotoFiles } from "@/lib/staff-photo-utils"
 import { useToast } from "@/hooks/use-toast"
 import {
   STAFF_BPS_OPTIONS,
@@ -259,11 +260,11 @@ export default function AddStaffPage() {
     try {
       const accepted: UploadValue[] = []
       for (const file of files.slice(0, remaining)) {
-        const result = await validateHumanFaceFile(file)
+        const result = await validateHumanFaceFile(file, { mode: "staff" })
         if (!result.ok) {
           toast({
-            title: NOT_HUMAN_PICTURE_MESSAGE,
-            description: "Only clear photos of a person's face are allowed.",
+            title: result.message,
+            description: "Use a clear photo with the person's face visible (front or side).",
             variant: "destructive",
           })
           continue
@@ -274,7 +275,7 @@ export default function AddStaffPage() {
         })
       }
       if (accepted.length > 0) {
-        setStaffPhotos((prev) => [...prev, ...accepted].slice(0, max))
+        setStaffPhotos((prev) => mergeStaffPhotos(prev, accepted))
       }
     } finally {
       setStaffPhotoValidating(false)
@@ -359,8 +360,8 @@ export default function AddStaffPage() {
         emergency_contact_name: form.emergency_contact_name || (form.full_name ? `${form.full_name} Contact` : ""),
         emergency_contact_relationship: form.emergency_contact_relationship,
         emergency_contact_address: form.emergency_contact_address,
-        profile_image: staffPhotos[0]?.file ?? undefined,
-        staff_photos: staffPhotos.map((p) => p.file).filter((f): f is File => f instanceof File),
+        profile_image: primaryStaffPhotoFile(staffPhotos),
+        staff_photos: newStaffPhotoFiles(staffPhotos),
         cnic_front: cnicFront.file ?? undefined,
         cnic_back: cnicBack.file ?? undefined,
         appointment_letter: appointmentLetter.file ?? undefined,

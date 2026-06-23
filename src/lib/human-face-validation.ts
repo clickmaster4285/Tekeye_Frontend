@@ -6,9 +6,15 @@
 import type { Tensor } from "@tensorflow/tfjs"
 
 export const NOT_HUMAN_PICTURE_MESSAGE = "This is not a human picture"
+export const NO_FACE_DETECTED_MESSAGE = "Could not detect a face in this photo"
+
+export type HumanFaceValidationMode = "strict" | "staff"
 
 const MIN_FACE_PROBABILITY = 0.88
+const STAFF_MIN_FACE_PROBABILITY = 0.7
+const STAFF_HIGH_CONFIDENCE = 0.82
 const MIN_SKIN_RATIO = 0.1
+const STAFF_MIN_SKIN_RATIO = 0.06
 const MIN_FACE_AREA_RATIO = 0.015
 const MAX_FACE_AREA_RATIO = 0.92
 
@@ -121,17 +127,32 @@ function hasPlausibleFaceLandmarks(landmarks: Array<[number, number]>): boolean 
 function faceBoxIsPlausible(
   face: ParsedFace,
   imgWidth: number,
-  imgHeight: number
+  imgHeight: number,
+  mode: HumanFaceValidationMode = "strict"
 ): boolean {
   const width = Math.abs(face.bottomRight[0] - face.topLeft[0])
   const height = Math.abs(face.bottomRight[1] - face.topLeft[1])
-  if (width < 24 || height < 24) return false
+  const minDim = mode === "staff" ? 20 : 24
+  if (width < minDim || height < minDim) return false
 
   const areaRatio = (width * height) / (imgWidth * imgHeight)
   if (areaRatio < MIN_FACE_AREA_RATIO || areaRatio > MAX_FACE_AREA_RATIO) return false
 
   const aspect = width / height
+  if (mode === "staff") {
+    return aspect >= 0.3 && aspect <= 2.5
+  }
   return aspect >= 0.55 && aspect <= 1.65
+}
+
+/** Side/profile poses often fail frontal geometry but still have spread keypoints. */
+function hasMinimalFaceStructure(landmarks: Array<[number, number]>): boolean {
+  if (landmarks.length < 4) return false
+  const xs = landmarks.map((point) => point[0])
+  const ys = landmarks.map((point) => point[1])
+  const spreadX = Math.max(...xs) - Math.min(...xs)
+  const spreadY = Math.max(...ys) - Math.min(...ys)
+  return spreadX >= 8 && spreadY >= 8
 }
 
 function isSkinPixel(r: number, g: number, b: number): boolean {
@@ -185,21 +206,12 @@ function getFaceRegionPixels(
   }
 }
 
-async function isLikelyHumanFace(
-  face: ParsedFace,
-  img: HTMLImageElement
-): Promise<boolean> {
+function faceSkinRatio(img: HTMLImageElement, face: ParsedFace): number | null {
   const imgWidth = img.naturalWidth || img.width
-  const imgHeight = img.naturalHeight || img.height
-
-  if (!faceBoxIsPlausible(face, imgWidth, imgHeight)) return false
-  if (face.probability < MIN_FACE_PROBABILITY) return false
-  if (!hasPlausibleFaceLandmarks(face.landmarks)) return false
-
   const pixels = getFaceRegionPixels(img, face)
-  if (!pixels) return false
+  if (!pixels) return null
 
-  const skinRatio = skinRatioInBox(
+  return skinRatioInBox(
     pixels,
     imgWidth,
     face.topLeft[0],
@@ -207,6 +219,44 @@ async function isLikelyHumanFace(
     face.bottomRight[0],
     face.bottomRight[1]
   )
+}
+
+async function isLikelyHumanFace(
+  face: ParsedFace,
+  img: HTMLImageElement,
+  mode: HumanFaceValidationMode
+): Promise<boolean> {
+  const imgWidth = img.naturalWidth || img.width
+  const imgHeight = img.naturalHeight || img.height
+
+  if (!faceBoxIsPlausible(face, imgWidth, imgHeight, mode)) return false
+
+  if (mode === "staff") {
+    if (face.probability < STAFF_MIN_FACE_PROBABILITY) return false
+
+    const frontal = hasPlausibleFaceLandmarks(face.landmarks)
+    const skinRatio = faceSkinRatio(img, face)
+
+    if (frontal) {
+      return skinRatio == null || skinRatio >= STAFF_MIN_SKIN_RATIO
+    }
+
+    if (face.probability >= STAFF_HIGH_CONFIDENCE) {
+      return true
+    }
+
+    if (hasMinimalFaceStructure(face.landmarks)) {
+      return skinRatio == null || skinRatio >= STAFF_MIN_SKIN_RATIO
+    }
+
+    return false
+  }
+
+  if (face.probability < MIN_FACE_PROBABILITY) return false
+  if (!hasPlausibleFaceLandmarks(face.landmarks)) return false
+
+  const skinRatio = faceSkinRatio(img, face)
+  if (skinRatio == null) return false
 
   return skinRatio >= MIN_SKIN_RATIO
 }
@@ -224,18 +274,31 @@ function fileToDataUrl(file: File | Blob): Promise<string> {
   })
 }
 
+export type HumanFaceValidationOptions = {
+  mode?: HumanFaceValidationMode
+}
+
+function rejectionMessage(mode: HumanFaceValidationMode): string {
+  return mode === "staff" ? NO_FACE_DETECTED_MESSAGE : NOT_HUMAN_PICTURE_MESSAGE
+}
+
 /** Validate an uploaded image file before accepting it. */
-export async function validateHumanFaceFile(file: File | Blob): Promise<HumanFaceValidationResult> {
+export async function validateHumanFaceFile(
+  file: File | Blob,
+  options?: HumanFaceValidationOptions
+): Promise<HumanFaceValidationResult> {
   const dataUrl = await fileToDataUrl(file)
-  return validateHumanFaceImage(dataUrl)
+  return validateHumanFaceImage(dataUrl, options)
 }
 
 /**
  * Returns ok when a human face is detected with sufficient confidence and geometry.
  */
 export async function validateHumanFaceImage(
-  dataUrl: string
+  dataUrl: string,
+  options?: HumanFaceValidationOptions
 ): Promise<HumanFaceValidationResult> {
+  const mode = options?.mode ?? "strict"
   if (typeof window === "undefined") {
     return { ok: true }
   }
@@ -247,19 +310,21 @@ export async function validateHumanFaceImage(
       await Promise.all((rawFaces ?? []).map((face) => parseFace(face)))
     ).filter((face): face is ParsedFace => face != null)
 
+    const failMessage = rejectionMessage(mode)
+
     if (!parsedFaces.length) {
-      return { ok: false, message: NOT_HUMAN_PICTURE_MESSAGE }
+      return { ok: false, message: failMessage }
     }
 
     for (const face of parsedFaces) {
-      if (await isLikelyHumanFace(face, img)) {
+      if (await isLikelyHumanFace(face, img, mode)) {
         return { ok: true }
       }
     }
 
-    return { ok: false, message: NOT_HUMAN_PICTURE_MESSAGE }
+    return { ok: false, message: failMessage }
   } catch (err) {
     console.warn("Human face validation failed:", err)
-    return { ok: false, message: NOT_HUMAN_PICTURE_MESSAGE }
+    return { ok: false, message: rejectionMessage(mode) }
   }
 }

@@ -643,7 +643,10 @@ const STAFF_FILE_FIELD_MAP: Record<string, string> = {
   additional_document: "contract_file",
 };
 
-function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
+function buildStaffMultipartFormData(
+  payload: CreateStaffPayload,
+  options?: { omitReadonly?: boolean },
+): FormData {
   const fd = new FormData();
   const r = payload as Record<string, unknown>;
   const skip = new Set([
@@ -657,7 +660,12 @@ function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
     "cnic_back",
     "appointment_letter",
     "additional_document",
+    "profile_image",
   ]);
+  if (options?.omitReadonly) {
+    skip.add("cnic");
+    skip.add("national_id");
+  }
 
   const fullName = String(r.full_name ?? "").trim();
   if (fullName) fd.append("full_name", fullName);
@@ -672,7 +680,7 @@ function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
   if (phonePrimary) fd.append("phone_primary", phonePrimary);
 
   const national = String(r.national_id ?? r.cnic ?? "").trim();
-  if (national) {
+  if (national && !options?.omitReadonly) {
     fd.append("national_id", national);
     if (r.cnic) fd.append("cnic", String(r.cnic).trim());
   }
@@ -698,9 +706,15 @@ function buildStaffMultipartFormData(payload: CreateStaffPayload): FormData {
     fd.append("leave_balance", String(lb));
   }
 
+  const explicitProfile = r.profile_image instanceof File ? r.profile_image : null;
   const photos = r.staff_photos;
-  if (Array.isArray(photos) && photos[0] instanceof File && !fd.has("profile_image")) {
-    fd.append("profile_image", photos[0]);
+  const photoFromList =
+    Array.isArray(photos) && photos.find((f) => f instanceof File)
+      ? (photos.find((f) => f instanceof File) as File)
+      : null;
+  const profileFile = explicitProfile ?? photoFromList;
+  if (profileFile instanceof File) {
+    fd.append("profile_image", profileFile);
   }
 
   for (const [sourceKey, targetKey] of Object.entries(STAFF_FILE_FIELD_MAP)) {
@@ -767,7 +781,7 @@ export async function updateStaff(
   if (useStaffRestApi()) {
     const hasFile = Object.values(payload).some((v) => v instanceof File);
     if (hasFile) {
-      const fd = buildStaffMultipartFormData(payload as CreateStaffPayload);
+      const fd = buildStaffMultipartFormData(payload as CreateStaffPayload, { omitReadonly: true });
       const res = await fetch(`${STAFF_ENDPOINT}${id}/`, {
         method: "PATCH",
         headers: getAuthHeadersFormData(),

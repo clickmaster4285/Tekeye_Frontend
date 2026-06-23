@@ -756,7 +756,8 @@ export function AddStaffStep1PersonalInfo({
                           <img
                             src={img.previewUrl}
                             alt={`Staff ${idx + 1}`}
-                            className="h-full w-full rounded-md border border-border object-cover bg-muted"
+                            className="h-full w-full rounded-md border border-border object-contain bg-muted"
+                            decoding="async"
                           />
                           <button
                             type="button"
