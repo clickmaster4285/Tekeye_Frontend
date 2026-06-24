@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Clock, LogIn, UserCheck, Calendar, Camera } from "lucide-react"
+import { Clock, LogIn, UserCheck, Calendar, Camera, Eye, Edit, Trash2 } from "lucide-react"
 import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,9 +17,20 @@ import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Select,
   SelectContent,
@@ -34,6 +45,9 @@ import { fetchStaff, type StaffRecord } from "@/lib/staff-api"
 import { resolveMediaUrl } from "@/lib/cameras-api"
 import {
   fetchAttendance,
+  fetchAttendanceById,
+  updateAttendance,
+  deleteAttendance,
   markCheckIn,
   markCheckOut,
   recognizeAndMarkAttendance,
@@ -58,6 +72,21 @@ function statusFromRecord(r: AttendanceRecord): string {
   return "Absent"
 }
 
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function fromDatetimeLocal(value: string): string | null {
+  if (!value.trim()) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
 type MarkType = "check_in" | "check_out"
 type MarkMode = "manual" | "face"
 
@@ -78,6 +107,13 @@ export default function AttendancePage() {
   const [markError, setMarkError] = useState<string | null>(null)
   const [marking, setMarking] = useState(false)
   const [filterDate, setFilterDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [viewRecord, setViewRecord] = useState<AttendanceRecord | null>(null)
+  const [viewLoading, setViewLoading] = useState(false)
+  const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null)
+  const [editForm, setEditForm] = useState({ date: "", check_in: "", check_out: "" })
+  const [editSaving, setEditSaving] = useState(false)
+  const [deleteRecord, setDeleteRecord] = useState<AttendanceRecord | null>(null)
+  const [deleteSaving, setDeleteSaving] = useState(false)
 
   const loadData = () => {
     setLoading(true)
@@ -125,6 +161,73 @@ export default function AttendancePage() {
     a.download = `attendance-${filterDate || "all"}.csv`
     a.click()
     URL.revokeObjectURL(a.href)
+  }
+
+  const handleView = (row: AttendanceRecord) => {
+    setViewRecord(row)
+    setViewLoading(true)
+    fetchAttendanceById(row.id)
+      .then(setViewRecord)
+      .catch((err) => {
+        toast({
+          title: "Could not load record",
+          description: err instanceof Error ? err.message : "Failed to load",
+          variant: "destructive",
+        })
+      })
+      .finally(() => setViewLoading(false))
+  }
+
+  const openEdit = (row: AttendanceRecord) => {
+    setEditRecord(row)
+    setEditForm({
+      date: row.date,
+      check_in: toDatetimeLocal(row.check_in),
+      check_out: toDatetimeLocal(row.check_out),
+    })
+  }
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editRecord) return
+    setEditSaving(true)
+    try {
+      await updateAttendance(editRecord.id, {
+        date: editForm.date,
+        check_in: fromDatetimeLocal(editForm.check_in),
+        check_out: fromDatetimeLocal(editForm.check_out),
+      })
+      toast({ title: "Attendance updated" })
+      setEditRecord(null)
+      loadData()
+    } catch (err) {
+      toast({
+        title: "Update failed",
+        description: err instanceof Error ? err.message : "Could not update record",
+        variant: "destructive",
+      })
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteRecord) return
+    setDeleteSaving(true)
+    try {
+      await deleteAttendance(deleteRecord.id)
+      toast({ title: "Attendance deleted", description: "The record has been removed." })
+      setDeleteRecord(null)
+      loadData()
+    } catch (err) {
+      toast({
+        title: "Delete failed",
+        description: err instanceof Error ? err.message : "Could not delete record",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleteSaving(false)
+    }
   }
 
   const userIdNum = selectedUserId ? Number(selectedUserId) : currentUser?.id ?? 0
@@ -412,12 +515,13 @@ export default function AttendancePage() {
                   <TableHead>Check-out</TableHead>
                   <TableHead>Clip</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredAttendance.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                       {attendance.length === 0
                         ? "No attendance records yet."
                         : `No records for ${filterDate}. Change the date or export all.`}
@@ -468,6 +572,37 @@ export default function AttendancePage() {
                             {status}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-blue-600"
+                              title="View"
+                              onClick={() => handleView(row)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-600"
+                              title="Edit"
+                              onClick={() => openEdit(row)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-600"
+                              title="Delete"
+                              onClick={() => setDeleteRecord(row)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     )
                   })
@@ -478,6 +613,144 @@ export default function AttendancePage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={viewRecord !== null} onOpenChange={(open) => !open && setViewRecord(null)}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Attendance record</DialogTitle>
+            </DialogHeader>
+            {viewRecord && (
+              <div className="space-y-4 text-sm">
+                {viewLoading && (
+                  <p className="text-muted-foreground">Refreshing record…</p>
+                )}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground">Employee</p>
+                    <p className="font-medium">{viewRecord.staff_name ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Username</p>
+                    <p className="font-medium">{viewRecord.username ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Date</p>
+                    <p className="font-mono">{viewRecord.date}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Status</p>
+                    <p>{statusFromRecord(viewRecord)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Check-in</p>
+                    <p>{formatTime(viewRecord.check_in)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Check-out</p>
+                    <p>{formatTime(viewRecord.check_out)}</p>
+                  </div>
+                </div>
+                {(viewRecord.video || viewRecord.image) && (
+                  <div className="space-y-2">
+                    <p className="text-muted-foreground">Proof clip</p>
+                    {viewRecord.video ? (
+                      <video
+                        src={resolveMediaUrl(viewRecord.video)}
+                        controls
+                        preload="metadata"
+                        poster={viewRecord.image ? resolveMediaUrl(viewRecord.image) : undefined}
+                        className="max-h-64 w-full rounded border bg-black object-contain"
+                      />
+                    ) : viewRecord.image ? (
+                      <img
+                        src={resolveMediaUrl(viewRecord.image)}
+                        alt="Attendance proof"
+                        className="max-h-64 w-full rounded border object-contain"
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={editRecord !== null} onOpenChange={(open) => !open && setEditRecord(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit attendance</DialogTitle>
+            </DialogHeader>
+            {editRecord && (
+              <form onSubmit={handleEditSave} className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  {editRecord.staff_name ?? editRecord.username ?? `Record #${editRecord.id}`}
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-date">Date</Label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={editForm.date}
+                    onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-check-in">Check-in</Label>
+                  <Input
+                    id="edit-check-in"
+                    type="datetime-local"
+                    value={editForm.check_in}
+                    onChange={(e) => setEditForm((f) => ({ ...f, check_in: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-check-out">Check-out</Label>
+                  <Input
+                    id="edit-check-out"
+                    type="datetime-local"
+                    value={editForm.check_out}
+                    onChange={(e) => setEditForm((f) => ({ ...f, check_out: e.target.value }))}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setEditRecord(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={editSaving}>
+                    {editSaving ? "Saving…" : "Save changes"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={deleteRecord !== null} onOpenChange={(open) => !open && setDeleteRecord(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete attendance record?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove the attendance entry for{" "}
+                <strong>{deleteRecord?.staff_name ?? deleteRecord?.username ?? "this employee"}</strong> on{" "}
+                <strong>{deleteRecord?.date}</strong>. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteSaving}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteSaving}
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleDeleteConfirm()
+                }}
+              >
+                {deleteSaving ? "Deleting…" : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </ModulePageLayout>
   )
