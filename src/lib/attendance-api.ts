@@ -30,6 +30,63 @@ export async function fetchAttendance(): Promise<AttendanceRecord[]> {
   return [];
 }
 
+export async function fetchAttendanceById(id: number): Promise<AttendanceRecord> {
+  const response = await fetch(`${ATTENDANCE_ENDPOINT}${id}/`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (response.status === 401) throw new Error("Unauthorized");
+  if (response.status === 404) throw new Error("Attendance record not found");
+  if (!response.ok) throw new Error(`Failed to load attendance (${response.status})`);
+  return response.json();
+}
+
+export type AttendanceUpdatePayload = {
+  user?: number | null;
+  staff?: number | null;
+  date?: string;
+  check_in?: string | null;
+  check_out?: string | null;
+};
+
+export async function updateAttendance(
+  id: number,
+  payload: AttendanceUpdatePayload
+): Promise<AttendanceRecord> {
+  const response = await fetch(`${ATTENDANCE_ENDPOINT}${id}/`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (response.status === 401) throw new Error("Unauthorized");
+  if (response.status === 403) throw new Error("Only Admin or HR can update attendance.");
+  if (response.status === 404) throw new Error("Attendance record not found");
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    const msg =
+      typeof err === "object" && err !== null
+        ? Object.entries(err)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(" ") : v}`)
+            .join("; ")
+        : `Failed to update attendance (${response.status})`;
+    throw new Error(msg);
+  }
+  return response.json();
+}
+
+export async function deleteAttendance(id: number): Promise<void> {
+  const response = await fetch(`${ATTENDANCE_ENDPOINT}${id}/`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (response.status === 401) throw new Error("Unauthorized");
+  if (response.status === 403) throw new Error("Only Admin or HR can delete attendance.");
+  if (response.status === 404) throw new Error("Attendance record not found");
+  if (!response.ok && response.status !== 204) {
+    throw new Error(`Failed to delete attendance (${response.status})`);
+  }
+}
+
 /** Mark check-in with camera image. */
 export async function markCheckIn(userId: number, imageFile: File): Promise<AttendanceRecord> {
   const form = new FormData();
