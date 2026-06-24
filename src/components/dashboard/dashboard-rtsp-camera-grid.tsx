@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Video, RefreshCw, MapPin, Layers, Camera } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -29,23 +29,27 @@ export function DashboardRtspCameraGrid() {
   const [zone, setZone] = useState(ALL_ZONES)
   const [cameraId, setCameraId] = useState(ALL_CAMERAS)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const reloadCameras = useCallback(() => {
-    setLoading(true)
+  const reloadCameras = useCallback((options?: { blocking?: boolean }) => {
+    const blocking = options?.blocking ?? false
+    if (blocking) setLoading(true)
+    else setRefreshing(true)
     fetchCameras()
       .then(setCameras)
       .catch(() => setCameras([]))
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        setRefreshing(false)
+      })
   }, [])
 
   useEffect(() => {
-    reloadCameras()
+    reloadCameras({ blocking: true })
     const onCustom = () => reloadCameras()
     window.addEventListener("camera-integration-updated", onCustom)
-    window.addEventListener("focus", reloadCameras)
     return () => {
       window.removeEventListener("camera-integration-updated", onCustom)
-      window.removeEventListener("focus", reloadCameras)
     }
   }, [reloadCameras])
 
@@ -177,8 +181,13 @@ export function DashboardRtspCameraGrid() {
               <CameraSelectItems cameras={camerasForZone} valueAs="id" />
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={reloadCameras}>
-            <RefreshCw className="h-4 w-4 mr-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => reloadCameras()}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
           <Button variant="outline" size="sm" asChild>
