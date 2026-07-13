@@ -84,9 +84,20 @@ export type DetentionMemoApiRecord = {
   memoQrCodeNumber?: string
   memoQrCodePayload?: string
   createdBy?: string
+  updatedBy?: string
   createdAt: string
   updatedAt?: string
   mediaAttachments?: DetentionMemoMediaAttachment[]
+  auditLog?: DetentionMemoAuditEntry[]
+}
+
+export type DetentionMemoAuditEntry = {
+  id: string
+  action: string
+  actionLabel: string
+  performedBy: string
+  message: string
+  createdAt: string
 }
 
 export async function fetchDetentionMemos(): Promise<DetentionMemoApiRecord[]> {
@@ -126,7 +137,6 @@ export function memoApiRecordToWritePayload(record: DetentionMemoApiRecord): Rec
   return {
     caseNo: record.caseNo ?? "",
     referenceNumber: record.referenceNumber ?? "",
-    firNumber: record.firNumber ?? "",
     dateTimeOccurrence: record.dateTimeOccurrence ?? "",
     placeOfOccurrence: record.placeOfOccurrence ?? "",
     dateTimeDetention: record.dateTimeDetention ?? "",

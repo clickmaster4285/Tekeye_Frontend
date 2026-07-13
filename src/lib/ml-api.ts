@@ -9,6 +9,14 @@ export type MLHealthResponse = {
   face_source?: string;
 };
 
+/** When false (e.g. production server without ml_services), skip all ML API calls. */
+export function isMlEnabled(): boolean {
+  const raw = import.meta.env?.VITE_ML_ENABLED;
+  if (raw === undefined || raw === "") return true;
+  const v = String(raw).trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
 export type MLDetection = {
   class_id: number;
   class_name: string;
@@ -19,6 +27,9 @@ export type MLDetection = {
 };
 
 export async function fetchMLHealth(): Promise<MLHealthResponse> {
+  if (!isMlEnabled()) {
+    return { status: "disabled", message: "ML disabled in this deployment." };
+  }
   const response = await fetch(`${API_BASE_URL}/api/ml/health/`, {
     headers: getAuthHeaders(),
     cache: "no-store",
@@ -32,6 +43,9 @@ export async function detectImage(
   imageFile: File,
   options?: { conf?: number; recognizeFaces?: boolean }
 ): Promise<{ detections: MLDetection[]; count: number }> {
+  if (!isMlEnabled()) {
+    throw new Error("ML is disabled on this server.");
+  }
   const form = new FormData();
   form.append("image", imageFile);
   const params = new URLSearchParams();
@@ -51,6 +65,9 @@ export async function detectImage(
 }
 
 export async function reloadKnownFaces(): Promise<{ reloaded: boolean; known_faces: number }> {
+  if (!isMlEnabled()) {
+    return { reloaded: false, known_faces: 0 };
+  }
   const response = await fetch(`${API_BASE_URL}/api/ml/reload-faces/`, {
     method: "POST",
     headers: getAuthHeaders(),

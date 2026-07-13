@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowLeft, ChevronDown, Plus, Trash2, Copy, Eye, Camera, X } from "lucide-react"
 import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,12 +34,19 @@ import {
 } from "@/components/ui/dialog"
 import { ROUTES } from "@/routes/config"
 import { CUSTOMS_STATIONS } from "@/lib/case-fir-spec"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/hooks/use-toast"
 import { getStoredUser } from "@/lib/auth"
 import { createDetentionMemo } from "@/lib/detention-memo-api"
+import {
+  fetchNoteSheetById,
+  fetchNoteSheets,
+  linkNoteSheetToDetention,
+  type NoteSheetRecord,
+} from "@/lib/seizure-management-api"
 
 const DETENTION_TYPES = ["Claimed", "Un-Claimed"] as const
 const REASONS = [
+  "Verification of Documents",
   "Inability to pay duty and taxes",
   "Pending clearance from Customs",
   "Pending Examination",
@@ -57,6 +64,14 @@ const SELECT_WAREHOUSE_PLACEHOLDER = "__select_warehouse__"
 const DIRECTORATES = ["MCC D.I Khan AFU Import", "MCC Peshawar", "MCC YARIK", "MCC DI Khan"] as const
 const GOODS_CONDITIONS = ["Seized", "Detained", "Under Examination", "Pending Clearance", "Unclaimed"] as const
 const GOODS_UNITS = ["PCS", "KGS", "LTR", "MTR", "CTN", "BOX", "BAG", "DOZ", "SET", "Other"] as const
+
+function sanitizeCnicInput(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 13)
+}
+
+function isValidCnic(value: string): boolean {
+  return /^\d{13}$/.test(value)
+}
 
 function generateUniqueQrCodeNumber(): string {
   return `QR-DM-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
@@ -103,8 +118,44 @@ const emptyGoodsItem = (): GoodsLineItem => ({
   imageFiles: [],
 })
 
+function noteSheetDateTime(value: string | undefined | null): string {
+  if (!value?.trim()) return ""
+  return value.trim().replace("T", " ").slice(0, 16)
+}
+
+function goodsFromNoteSheet(ns: NoteSheetRecord): GoodsLineItem[] {
+  if (!ns.items?.length) return []
+  return ns.items
+    .filter(
+      (it) =>
+        (it.product || it.description || "").trim() ||
+        it.quantity.trim() ||
+        (it.estimatedValue || it.assessableValuePkr || "").trim()
+    )
+    .map((it) => ({
+      ...emptyGoodsItem(),
+      description: it.product || it.description || "",
+      pctCode: it.pctCode || "",
+      quantity: it.quantity || "",
+      unit: it.unit?.trim() || "PCS",
+      condition: it.condition || "Detained",
+      assessableValuePkr: it.estimatedValue || it.assessableValuePkr || "",
+      identificationRef: it.identificationRef || "",
+      itemNotes: it.remarks || it.itemNotes || "",
+      perishable: Boolean(it.perishable),
+      images: it.images || [],
+      imageFiles: [],
+      ...(it.qrCodeNumber ? { qrCodeNumber: it.qrCodeNumber } : {}),
+    }))
+}
+
 export default function DetentionMemoCreatePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const noteSheetIdParam = searchParams.get("noteSheetId")?.trim() || ""
+  const [noteSheetId, setNoteSheetId] = useState(noteSheetIdParam)
+  const [availableNoteSheets, setAvailableNoteSheets] = useState<NoteSheetRecord[]>([])
+  const [linkedNoteSheet, setLinkedNoteSheet] = useState<NoteSheetRecord | null>(null)
   const [caseNo, setCaseNo] = useState("")
   const [dateTimeOccurrence, setDateTimeOccurrence] = useState(() => {
     const d = new Date()
@@ -115,10 +166,9 @@ export default function DetentionMemoCreatePage() {
     const d = new Date()
     return d.toISOString().slice(0, 16).replace("T", " ")
   })
-  const [placeOfDetention, setPlaceOfDetention] = useState("D.I.Khan")
+  const [placeOfDetention, setPlaceOfDetention] = useState("")
   const [detentionType, setDetentionType] = useState("")
   const [referenceNumber, setReferenceNumber] = useState("")
-  const [firNumber, setFirNumber] = useState("")
   const [directorate, setDirectorate] = useState("MCC D.I Khan AFU Import")
   const [reasonForDetention, setReasonForDetention] = useState("")
   const [locationOfDetention, setLocationOfDetention] = useState("")
@@ -127,7 +177,7 @@ export default function DetentionMemoCreatePage() {
   const [searchChassisNumber, setSearchChassisNumber] = useState("")
   const [receiptOfficer, setReceiptOfficer] = useState("")
   const [settlementStatus, setSettlementStatus] = useState("")
-  const [gdNumber2, setGdNumber2] = useState("")
+  const [gdNumber2] = useState("")
   const [verificationStatus, setVerificationStatus] = useState("")
   const [briefFacts, setBriefFacts] = useState("")
   const [forwardingOfficerRemarks, setForwardingOfficerRemarks] = useState("")
@@ -156,6 +206,7 @@ export default function DetentionMemoCreatePage() {
   // QR preview dialog
   const [previewQrData, setPreviewQrData] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState("")
 
   useEffect(() => {
     return () => {
@@ -164,9 +215,65 @@ export default function DetentionMemoCreatePage() {
     }
   }, [ownerPhotoPreviewUrl, driverPhotoPreviewUrl])
 
+  const applyNoteSheetPrefill = (ns: NoteSheetRecord) => {
+    setLinkedNoteSheet(ns)
+    setNoteSheetId(ns.id)
+    if (ns.caseNo) setCaseNo(ns.caseNo)
+    if (ns.accusedName) setOwnerName(ns.accusedName)
+    if (ns.accusedCnic) setOwnerCnic(sanitizeCnicInput(ns.accusedCnic))
+    if (ns.accusedMobile) setOwnerContact(ns.accusedMobile)
+    const place = ns.placeOfInspection || ns.warehouseShop || ""
+    if (place) {
+      setPlaceOfOccurrence(place)
+      setPlaceOfDetention(place)
+      setLocationOfDetention(ns.warehouseShop || place)
+    }
+    const inspectionDt = noteSheetDateTime(ns.inspectionDate || ns.dateTime)
+    if (inspectionDt) {
+      setDateTimeOccurrence(inspectionDt)
+      setDateTimeDetention(inspectionDt)
+    }
+    if (ns.groundsOfSuspicion) {
+      setReasonForDetention("Others")
+    }
+    const findings =
+      [ns.preliminaryFindings, ns.content, ns.groundsOfSuspicion].filter((x) => x?.trim()).join("\n\n") ||
+      ""
+    if (findings) {
+      setBriefFacts(findings)
+      setPurposeOfDetention(findings)
+    }
+    if (ns.preparedBy) setReceiptOfficer(ns.preparedBy)
+    const goods = goodsFromNoteSheet(ns)
+    if (goods.length) setGoodsItems(goods)
+  }
+
+  useEffect(() => {
+    fetchNoteSheets({ available: true })
+      .then((list) => {
+        setAvailableNoteSheets(list)
+        if (noteSheetIdParam && !list.find((n) => n.id === noteSheetIdParam)) {
+          fetchNoteSheetById(noteSheetIdParam)
+            .then((ns) => applyNoteSheetPrefill(ns))
+            .catch(() => undefined)
+        } else if (noteSheetIdParam) {
+          const ns = list.find((n) => n.id === noteSheetIdParam)
+          if (ns) applyNoteSheetPrefill(ns)
+        } else if (list.length === 1) {
+          applyNoteSheetPrefill(list[0])
+        }
+      })
+      .catch(() => setAvailableNoteSheets([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once on mount / noteSheetIdParam
+  }, [noteSheetIdParam])
+
   const addGoodsLine = () => setGoodsItems((prev) => [...prev, emptyGoodsItem()])
   const removeGoodsLine = (id: string) => setGoodsItems((prev) => prev.filter((i) => i.id !== id))
-  const updateGoodsLine = (id: string, field: keyof GoodsLineItem, value: string | boolean) => {
+  const updateGoodsLine = (
+    id: string,
+    field: keyof GoodsLineItem,
+    value: string | boolean | File[]
+  ) => {
     setGoodsItems((prev) => prev.map((i) => (i.id === id ? { ...i, [field]: value } : i)))
   }
 
@@ -201,12 +308,45 @@ export default function DetentionMemoCreatePage() {
   }
 
   const handleSave = async () => {
+    setFormError("")
+    const normalizedOwnerCnic = ownerCnic.trim()
+    const normalizedDriverCnic = driverCnic.trim()
+    if (!noteSheetId) {
+      const msg = "Select an approved note sheet before creating the detention memo."
+      setFormError(msg)
+      toast({
+        title: "Approved note sheet required",
+        description: msg,
+        variant: "destructive",
+      })
+      return
+    }
+    if (normalizedOwnerCnic && !isValidCnic(normalizedOwnerCnic)) {
+      const msg = "Owner CNIC must be exactly 13 digits (without dashes)."
+      setFormError(msg)
+      toast({
+        title: "Invalid Owner CNIC",
+        description: msg,
+        variant: "destructive",
+      })
+      return
+    }
+    if (normalizedDriverCnic && !isValidCnic(normalizedDriverCnic)) {
+      const msg = "Driver CNIC must be exactly 13 digits (without dashes)."
+      setFormError(msg)
+      toast({
+        title: "Invalid Driver CNIC",
+        description: msg,
+        variant: "destructive",
+      })
+      return
+    }
+
     const currentUser = getStoredUser()
     const memoQrCodeNumber = generateMemoQrCodeNumber()
     const payload: Record<string, unknown> = {
       caseNo: caseNo || `DM-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
       referenceNumber,
-      firNumber,
       dateTimeOccurrence,
       placeOfOccurrence,
       dateTimeDetention,
@@ -225,16 +365,29 @@ export default function DetentionMemoCreatePage() {
       briefFacts,
       forwardingOfficerRemarks,
       purposeOfDetention,
-      owner: { name: ownerName, cnic: ownerCnic, contact: ownerContact },
-      driver: { name: driverName, cnic: driverCnic, contact: driverContact },
+      owner: { name: ownerName, cnic: normalizedOwnerCnic, contact: ownerContact },
+      driver: { name: driverName, cnic: normalizedDriverCnic, contact: driverContact },
       goodsItems: goodsItems.map((item) => ({
-        ...item,
+        id: item.id,
+        qrCodeNumber: item.qrCodeNumber,
+        description: item.description,
+        pctCode: item.pctCode,
+        quantity: item.quantity,
+        unit: item.unit,
+        condition: item.condition,
+        assessableValuePkr: item.assessableValuePkr,
+        identificationRef: item.identificationRef,
+        itemNotes: item.itemNotes,
+        perishable: item.perishable,
         images: [],
       })),
       seizingOfficerNotes,
       examiningOfficerNotes,
       detentionNotes,
-      createdBy: currentUser?.username?.trim() || "ASO Portal",
+      createdBy:
+        (currentUser?.full_name || "").trim() || currentUser?.username?.trim() || "ASO Portal",
+      updatedBy:
+        (currentUser?.full_name || "").trim() || currentUser?.username?.trim() || "ASO Portal",
       memoQrCodeNumber,
       memoQrCodePayload: "",
       clientOrigin: window.location.origin,
@@ -250,19 +403,35 @@ export default function DetentionMemoCreatePage() {
 
     setSaving(true)
     try {
-      await createDetentionMemo(payload, {
+      const created = await createDetentionMemo(payload, {
         ownerPhoto: ownerPhotoFile,
         driverPhoto: driverPhotoFile,
         documents: documentFiles,
         videos: videoFiles,
         goodsImages: goodsImagesMap,
       })
-      toast({ title: "Saved", description: "Detention memo saved to the database." })
+      try {
+        await linkNoteSheetToDetention(noteSheetId, created.id)
+      } catch (linkErr) {
+        const msg = linkErr instanceof Error ? linkErr.message : "Link failed"
+        setFormError(msg)
+        toast({
+          title: "Memo saved, but note sheet link failed",
+          description: msg,
+          variant: "destructive",
+        })
+        navigate(ROUTES.DETENTION_MEMO)
+        return
+      }
+      toast({ title: "Saved", description: "Detention memo saved and linked to approved note sheet." })
       navigate(ROUTES.DETENTION_MEMO)
     } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not save detention memo."
+      console.error("Detention memo save failed", e)
+      setFormError(msg)
       toast({
         title: "Save failed",
-        description: e instanceof Error ? e.message : "Could not save detention memo.",
+        description: msg,
         variant: "destructive",
       })
     } finally {
@@ -279,8 +448,7 @@ export default function DetentionMemoCreatePage() {
       title="Detention Memo / Create"
       description="Add a new detention memo (prepared after the detention). All fields as per Pakistan Customs detention memo. Data is saved to the server database."
       breadcrumbs={[
-        { label: "WMS" },
-        { label: "Detentions" },
+        { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
         { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
         { label: "Create" },
       ]}
@@ -295,8 +463,56 @@ export default function DetentionMemoCreatePage() {
           </Button>
         </div>
         <p className="mb-4 text-sm text-muted-foreground rounded-md bg-muted/60 px-3 py-2 border border-border/50">
-          This detention memo is prepared <strong>after</strong> the detention. Record all details of the detention event and goods for customs record.
+          Detention memo is created only after an approved note sheet. Upload supporting documents below.
         </p>
+
+        <Card className="mb-6 border-blue-100 bg-blue-50/40">
+          <CardContent className="pt-6 space-y-3">
+            <Label>Approved Note Sheet *</Label>
+            <Select
+              value={noteSheetId || undefined}
+              onValueChange={(v) => {
+                setFormError("")
+                const ns =
+                  availableNoteSheets.find((n) => n.id === v) ||
+                  (linkedNoteSheet?.id === v ? linkedNoteSheet : null)
+                if (ns) {
+                  applyNoteSheetPrefill(ns)
+                } else {
+                  setNoteSheetId(v)
+                  fetchNoteSheetById(v)
+                    .then((full) => applyNoteSheetPrefill(full))
+                    .catch(() => undefined)
+                }
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select approved note sheet" />
+              </SelectTrigger>
+              <SelectContent>
+                {linkedNoteSheet && !availableNoteSheets.find((n) => n.id === linkedNoteSheet.id) && (
+                  <SelectItem value={linkedNoteSheet.id}>
+                    {linkedNoteSheet.noteSheetNo || linkedNoteSheet.referenceNumber || linkedNoteSheet.subject} ({linkedNoteSheet.status})
+                  </SelectItem>
+                )}
+                {availableNoteSheets.map((n) => (
+                  <SelectItem key={n.id} value={n.id}>
+                    {n.noteSheetNo || n.referenceNumber || n.subject || n.id} — {n.preparedBy || "—"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {availableNoteSheets.length === 0 && !linkedNoteSheet && (
+              <p className="text-sm text-amber-800">
+                No approved note sheets available.{" "}
+                <Link to={ROUTES.SEIZURE_MGMT_NOTE_SHEET} className="text-primary underline">
+                  Create / approve a note sheet
+                </Link>{" "}
+                first.
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="space-y-4 w-full">
           {/* Basic Information */}
@@ -317,10 +533,6 @@ export default function DetentionMemoCreatePage() {
                   <div className="grid gap-2">
                     <Label>Reference Number</Label>
                     <Input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference No" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>FIR Number</Label>
-                    <Input value={firNumber} onChange={(e) => setFirNumber(e.target.value)} placeholder="e.g. FIR-2024-001" />
                   </div>
                   <div className="grid gap-2">
                     <Label>Date/Time of occurrence</Label>
@@ -348,18 +560,17 @@ export default function DetentionMemoCreatePage() {
                       <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                       <SelectContent>
                         {CUSTOMS_STATIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        <SelectItem value="D.I.Khan">D.I.Khan</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Detention Type</Label>
+                    {/* <Label>Detention Type</Label>
                     <Select value={detentionType} onValueChange={setDetentionType}>
                       <SelectTrigger><SelectValue placeholder="Select Detention Type" /></SelectTrigger>
                       <SelectContent>
                         {DETENTION_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                       </SelectContent>
-                    </Select>
+                    </Select> */}
                   </div>
                 </CardContent>
               </CollapsibleContent>
@@ -371,7 +582,7 @@ export default function DetentionMemoCreatePage() {
             <Card>
               <CollapsibleTrigger asChild>
                 <CardHeader className="cursor-pointer flex flex-row items-center justify-between hover:bg-muted/50 rounded-t-lg">
-                  <CardTitle className="text-base">Owner & Driver Details</CardTitle>
+                  <CardTitle className="text-base">Owner & Driver Details (Optional)</CardTitle>
                   <ChevronDown className="h-4 w-4 shrink-0" />
                 </CardHeader>
               </CollapsibleTrigger>
@@ -387,7 +598,13 @@ export default function DetentionMemoCreatePage() {
                       </div>
                       <div className="grid gap-2">
                         <Label>CNIC</Label>
-                        <Input value={ownerCnic} onChange={(e) => setOwnerCnic(e.target.value)} placeholder="12345-1234567-1" />
+                        <Input
+                          value={ownerCnic}
+                          onChange={(e) => setOwnerCnic(sanitizeCnicInput(e.target.value))}
+                          placeholder="13 digits (e.g. 1234512345671)"
+                          inputMode="numeric"
+                          maxLength={13}
+                        />
                       </div>
                       <div className="grid gap-2">
                         <Label>Contact</Label>
@@ -415,7 +632,13 @@ export default function DetentionMemoCreatePage() {
                       </div>
                       <div className="grid gap-2">
                         <Label>CNIC</Label>
-                        <Input value={driverCnic} onChange={(e) => setDriverCnic(e.target.value)} placeholder="12345-1234567-1" />
+                        <Input
+                          value={driverCnic}
+                          onChange={(e) => setDriverCnic(sanitizeCnicInput(e.target.value))}
+                          placeholder="13 digits (e.g. 1234512345671)"
+                          inputMode="numeric"
+                          maxLength={13}
+                        />
                       </div>
                       <div className="grid gap-2">
                         <Label>Contact</Label>
@@ -460,7 +683,10 @@ export default function DetentionMemoCreatePage() {
                   </div>
                   <div className="grid gap-2">
                     <Label>Reason for detention *</Label>
-                    <Select value={reasonForDetention} onValueChange={setReasonForDetention}>
+                    <Select
+                      value={reasonForDetention || undefined}
+                      onValueChange={setReasonForDetention}
+                    >
                       <SelectTrigger><SelectValue placeholder="Select Reason" /></SelectTrigger>
                       <SelectContent>
                         {REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
@@ -477,7 +703,7 @@ export default function DetentionMemoCreatePage() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Where detained goods deposited</Label>
+                    <Label>Good Detained at</Label>
                     <Select value={whereDeposited} onValueChange={setWhereDeposited}>
                       <SelectTrigger><SelectValue placeholder="Select Warehouse" /></SelectTrigger>
                       <SelectContent>
@@ -494,7 +720,7 @@ export default function DetentionMemoCreatePage() {
                     </div>
                   </div>
                   <div className="grid gap-2 md:col-span-2">
-                    <Label>Receipt Officer receiving Detained Goods in deposit *</Label>
+                    <Label>Receipt Officer receiving Detained Goods *</Label>
                     <Input value={receiptOfficer} onChange={(e) => setReceiptOfficer(e.target.value)} placeholder="Officer name" />
                   </div>
                   <div className="grid gap-2">
@@ -510,12 +736,24 @@ export default function DetentionMemoCreatePage() {
                       </label>
                     </RadioGroup>
                   </div>
-                  <div className="grid gap-2">
-                    <Label>GD Number</Label>
-                    <div className="flex gap-2">
-                      <Input value={gdNumber2} onChange={(e) => setGdNumber2(e.target.value)} placeholder="GD Number" />
-                      <Button type="button" variant="outline" size="sm">View</Button>
-                    </div>
+                  <div className="grid gap-2 md:col-span-2">
+                    <Label>Docs Upload</Label>
+                    <Input
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,image/*,application/pdf"
+                      onChange={(e) => setDocumentFiles(Array.from(e.target.files ?? []))}
+                    />
+                    {documentFiles.length > 0 && (
+                      <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-5">
+                        {documentFiles.map((f, i) => (
+                          <li key={`${f.name}-${i}-${f.lastModified}`}>{f.name}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Supporting documents are uploaded with Save/Submit.
+                    </p>
                   </div>
                   <div className="grid gap-2">
                     <Label>Verification Status</Label>
@@ -784,36 +1022,6 @@ export default function DetentionMemoCreatePage() {
             </Card>
           </Collapsible>
 
-          {/* Upload Documents */}
-          <Collapsible>
-            <Card>
-              <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer flex flex-row items-center justify-between hover:bg-muted/50 rounded-t-lg">
-                  <CardTitle className="text-base">Upload Documents</CardTitle>
-                  <ChevronDown className="h-4 w-4 shrink-0" />
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="pt-0 space-y-2">
-                  <Input
-                    type="file"
-                    multiple
-                    className="max-w-md"
-                    onChange={(e) => setDocumentFiles(Array.from(e.target.files ?? []))}
-                  />
-                  {documentFiles.length > 0 && (
-                    <ul className="text-sm text-muted-foreground space-y-0.5 list-disc pl-5">
-                      {documentFiles.map((f, i) => (
-                        <li key={`${f.name}-${i}-${f.lastModified}`}>{f.name}</li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="text-xs text-muted-foreground">Files listed here are uploaded with Save/Submit.</p>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-
           {/* Upload Videos */}
           <Collapsible>
             <Card>
@@ -910,17 +1118,59 @@ export default function DetentionMemoCreatePage() {
             </CardContent>
           </Card>
 
+          <Collapsible defaultOpen>
+            <Card>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer flex flex-row items-center justify-between hover:bg-muted/50 rounded-t-lg">
+                  <CardTitle className="text-base">Audit Log</CardTitle>
+                  <ChevronDown className="h-4 w-4 shrink-0" />
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0 grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label>Created By</Label>
+                    <Input
+                      value={
+                        (getStoredUser()?.full_name || "").trim() ||
+                        getStoredUser()?.username ||
+                        "—"
+                      }
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Created On</Label>
+                    <Input value={new Date().toLocaleString()} readOnly className="bg-muted" />
+                  </div>
+                  <p className="text-xs text-muted-foreground md:col-span-2">
+                    Full audit history (create / update events) is available on the detention memo
+                    detail page after save.
+                  </p>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 pb-8">
-            <Button onClick={() => void handleSave()} disabled={saving}>
-              {saving ? "Saving…" : "Save"}
-            </Button>
-            <Button onClick={() => void handleSubmit()} disabled={saving}>
-              {saving ? "Saving…" : "Submit"}
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to={ROUTES.DETENTION_MEMO}>Cancel</Link>
-            </Button>
+          <div className="flex flex-col gap-3 pb-8">
+            {formError && (
+              <p className="text-sm text-destructive rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+                {formError}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => void handleSave()} disabled={saving}>
+                {saving ? "Saving…" : "Save"}
+              </Button>
+              <Button onClick={() => void handleSubmit()} disabled={saving}>
+                {saving ? "Saving…" : "Submit"}
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={ROUTES.DETENTION_MEMO}>Cancel</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>

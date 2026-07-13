@@ -121,10 +121,15 @@ export type DetectionEvent = {
   label: string;
   employee_name?: string;
   personal_number?: string;
+  local_track_id?: number | null;
+  global_track_id?: number | null;
+  person_identity_id?: number | null;
+  person_qr?: string;
+  track_event?: string;
   confidence: number;
   bbox: [number, number, number, number];
   is_alert: boolean;
-    clip_status?: ClipStatus;
+  clip_status?: ClipStatus;
   clip_url?: string;
   created_at: string;
 };
@@ -402,8 +407,14 @@ export async function fetchMlLiveDetections(cameraId: number): Promise<{
     confidence: number;
     bbox: [number, number, number, number];
     alert?: boolean;
+    track_id?: number | null;
+    person_qr?: string | null;
   }>;
   count: number;
+  frame_width?: number;
+  frame_height?: number;
+  display_width?: number;
+  display_height?: number;
 }> {
   const res = await fetch(`${API}/cameras/${cameraId}/ml-live/detections/?save=false`, {
     headers: getAuthHeaders(),
@@ -494,4 +505,67 @@ export async function fetchStreamCameras(): Promise<{
 /** Display label for camera source (no credentials exposed). */
 export function cameraSourceLabel(cam: Pick<CameraRecord, "site_name" | "nvr_name" | "channel" | "nvr_ip">): string {
   return `${cam.site_name} · ${cam.nvr_name} · Ch ${cam.channel}`;
+}
+
+export type PersonJourneySighting = {
+  camera_id: number;
+  camera_code: string;
+  camera_name: string;
+  site_code: string;
+  zone: string;
+  local_track_id: number | null;
+  global_track_id?: number | null;
+  started_at: string;
+  ended_at: string | null;
+  label: string;
+  snapshot_url?: string;
+  clip_status?: string;
+  snapshot_urls?: string[];
+};
+
+export type PersonJourney = {
+  qr_code_number: string;
+  person_type: string;
+  display_name: string;
+  staff_id: number | null;
+  visitor_id: number | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  sightings_count: number;
+  snapshot_url?: string;
+  global_track_id?: number | null;
+  path: PersonJourneySighting[];
+};
+
+export async function fetchPersonJourney(qrCode: string): Promise<PersonJourney> {
+  const code = encodeURIComponent(qrCode.trim());
+  const res = await fetch(`${API}/cameras/persons/${code}/journey/`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load person journey (${res.status})`);
+  return res.json();
+}
+
+export type PersonIdentitySummary = {
+  qr_code_number: string;
+  person_type: string;
+  display_name: string;
+  staff_id: number | null;
+  visitor_id: number | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  snapshot_url?: string;
+};
+
+export async function fetchPersonIdentities(limit = 50): Promise<{
+  count: number;
+  results: PersonIdentitySummary[];
+}> {
+  const res = await fetch(`${API}/cameras/persons/?limit=${limit}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load persons (${res.status})`);
+  return res.json();
 }

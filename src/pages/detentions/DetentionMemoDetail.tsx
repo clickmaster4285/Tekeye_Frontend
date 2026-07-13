@@ -13,11 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ROUTES } from "@/routes/config"
+import { ROUTES, getDetentionMemoDetailPath } from "@/routes/config"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import DetentionMemoReport from "@/components/detention/DetentionMemoReport"
+import DetentionMemoReportPrint from "@/components/detention/DetentionMemoReportPrint"
 import DetentionMemoQRPrint from "@/components/detention/DetentionMemoQRPrint"
 import { DestructionRecordsPanel } from "@/components/warehouse/destruction-records-panel"
+import { WmsFlowOverviewPanel } from "@/components/warehouse/wms-flow-overview-panel"
 import { fetchDetentionMemoById, type DetentionMemoApiRecord } from "@/lib/detention-memo-api"
 
 type GoodsLineItem = {
@@ -84,7 +85,179 @@ function getQrCodeUrl(data: string, size = 180) {
 
 function getGoodsQrPayload(memoId: string, item: GoodsLineItem): string {
   const ref = item.qrCodeNumber || `${memoId}-${item.id}`
-  return `${window.location.origin}/detention-memo/${encodeURIComponent(memoId)}?goodsQr=${encodeURIComponent(ref)}`
+  return `${window.location.origin}${getDetentionMemoDetailPath(memoId)}?goodsQr=${encodeURIComponent(ref)}&view=goods`
+}
+
+function goodsMatchesQr(item: GoodsLineItem, memoId: string, qr: string): boolean {
+  const q = qr.trim().toLowerCase()
+  if (!q) return true
+  return (
+    (item.qrCodeNumber || "").toLowerCase() === q ||
+    item.id.toLowerCase() === q ||
+    `${memoId}-${item.id}`.toLowerCase() === q
+  )
+}
+
+function GoodsInformationBlock({
+  memoId,
+  items,
+  highlightQr,
+}: {
+  memoId: string
+  items: GoodsLineItem[]
+  highlightQr?: string
+}) {
+  const highlight = highlightQr?.trim().toLowerCase() || ""
+
+  if (!items.length) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-muted-foreground">
+          No goods line matched this QR code.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Package className="h-4 w-4" />
+          Goods Information
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="rounded-lg border p-0">
+        <div className="space-y-3 p-3 sm:hidden">
+          {items.map((item) => {
+            const isHighlight =
+              highlight &&
+              ((item.qrCodeNumber || "").toLowerCase() === highlight ||
+                item.id.toLowerCase() === highlight)
+            return (
+              <div
+                key={item.id}
+                className={`rounded-md border bg-background p-3 ${isHighlight ? "ring-2 ring-primary" : ""}`}
+              >
+                <div className="mb-3 flex items-start gap-3">
+                  <img
+                    src={getQrCodeUrl(getGoodsQrPayload(memoId, item), 56)}
+                    alt={`Goods QR ${item.qrCodeNumber || item.id}`}
+                    className="h-14 w-14 rounded border bg-white p-1"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">QR Number</p>
+                    <p className="break-all text-xs font-medium">{item.qrCodeNumber || "—"}</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-muted-foreground">Description: </span><span className="break-words font-medium">{item.description || "—"}</span></div>
+                  <div><span className="text-muted-foreground">PCT: </span>{item.pctCode || "—"}</div>
+                  <div><span className="text-muted-foreground">Qty/Unit: </span>{item.quantity || "—"} / {item.unit || "—"}</div>
+                  <div><span className="text-muted-foreground">Condition: </span>{item.condition || "—"}</div>
+                  <div><span className="text-muted-foreground">Assessable: </span>{item.assessableValuePkr || "—"}</div>
+                  <div><span className="text-muted-foreground">Perishable: </span>{item.perishable ? "Yes" : "No"}</div>
+                  <div><span className="text-muted-foreground">ID/Chassis: </span><span className="break-words">{item.identificationRef || "—"}</span></div>
+                  <div><span className="text-muted-foreground">Notes: </span><span className="break-words">{item.itemNotes || "—"}</span></div>
+                </div>
+                <div className="mt-3">
+                  <p className="mb-1 text-xs text-muted-foreground">Images</p>
+                  {item.images && item.images.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.images.map((imgUrl, idx) => (
+                        <img
+                          key={idx}
+                          src={imgUrl}
+                          alt={`Goods image ${idx + 1}`}
+                          className="h-12 w-12 rounded border object-cover"
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="hidden overflow-x-auto sm:block">
+          <ScrollArea className="w-full">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead> QR Code</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>PCT</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Condition</TableHead>
+                  <TableHead>Assessable</TableHead>
+                  <TableHead>Perishable</TableHead>
+                  <TableHead>ID / Chassis</TableHead>
+                  <TableHead>Item Notes</TableHead>
+                  <TableHead>Images</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => {
+                  const isHighlight =
+                    highlight &&
+                    ((item.qrCodeNumber || "").toLowerCase() === highlight ||
+                      item.id.toLowerCase() === highlight)
+                  return (
+                    <TableRow
+                      key={item.id}
+                      className={isHighlight ? "bg-primary/5 ring-1 ring-inset ring-primary/30" : undefined}
+                    >
+                      <TableCell className="font-mono text-xs">
+                        <div className="space-y-1">
+                          <img
+                            src={getQrCodeUrl(getGoodsQrPayload(memoId, item), typeof window !== 'undefined' && window.innerWidth < 640 ? 40 : 56)}
+                            alt={`Goods QR ${item.qrCodeNumber || item.id}`}
+                            className="h-10 w-10 sm:h-14 sm:w-14 border rounded p-1 bg-white"
+                          />
+                          <span className="block text-[10px] text-muted-foreground max-w-[60px] sm:max-w-[80px] break-all">
+                            {item.qrCodeNumber || "—"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium break-words min-w-[120px]">{item.description || "—"}</TableCell>
+                      <TableCell className="font-mono break-words">{item.pctCode || "—"}</TableCell>
+                      <TableCell>{item.quantity || "—"}</TableCell>
+                      <TableCell>{item.unit || "—"}</TableCell>
+                      <TableCell>{item.condition || "—"}</TableCell>
+                      <TableCell className="break-words min-w-[80px]">{item.assessableValuePkr || "—"}</TableCell>
+                      <TableCell>{item.perishable ? "Yes" : "No"}</TableCell>
+                      <TableCell className="break-words min-w-[100px]">{item.identificationRef || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground max-w-[150px] sm:max-w-[200px] truncate">{item.itemNotes || "—"}</TableCell>
+                      <TableCell>
+                        {item.images && item.images.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {item.images.map((imgUrl, idx) => (
+                              <img
+                                key={idx}
+                                src={imgUrl}
+                                alt={`Goods image ${idx + 1}`}
+                                className="h-8 w-8 sm:h-10 sm:w-10 object-cover rounded border"
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function DetentionMemoDetailPage() {
@@ -94,6 +267,8 @@ export default function DetentionMemoDetailPage() {
   const printMode = searchParams.get("print")
   const autoPrint = searchParams.get("autoprint") === "1"
   const isPrintMode = printMode === "qr" || printMode === "full"
+  const goodsQrFilter = searchParams.get("goodsQr")?.trim() || ""
+  const goodsOnlyView = searchParams.get("view") === "goods" && !!goodsQrFilter
 
   useEffect(() => {
     if (!id) {
@@ -127,8 +302,7 @@ export default function DetentionMemoDetailPage() {
         title="Detention Memo Not Found"
         description="The requested record could not be found."
         breadcrumbs={[
-          { label: "WMS" },
-          { label: "Detentions" },
+          { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
           { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
           { label: "Detail" },
         ]}
@@ -154,8 +328,7 @@ export default function DetentionMemoDetailPage() {
         title="Detention Memo"
         description="Loading record…"
         breadcrumbs={[
-          { label: "WMS" },
-          { label: "Detentions" },
+          { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
           { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
           { label: "Detail" },
         ]}
@@ -175,8 +348,7 @@ export default function DetentionMemoDetailPage() {
         title="Detention Memo Not Found"
         description="The requested record could not be found."
         breadcrumbs={[
-          { label: "WMS" },
-          { label: "Detentions" },
+          { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
           { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
           { label: "Detail" },
         ]}
@@ -196,7 +368,7 @@ export default function DetentionMemoDetailPage() {
     )
   }
 
-  const qrPayload = row.memoQrCodePayload || `${window.location.origin}/detention-memo/${encodeURIComponent(row.id)}?print=full`
+  const qrPayload = row.memoQrCodePayload || `${window.location.origin}${getDetentionMemoDetailPath(row.id)}?print=full`
   const qrNumber = row.memoQrCodeNumber || `DM-${row.caseNo}`
   const reportRow = row as unknown as DetentionMemoRow
 
@@ -215,7 +387,7 @@ export default function DetentionMemoDetailPage() {
 
   if (printMode === "full") {
     return (
-      <DetentionMemoReport
+      <DetentionMemoReportPrint
         row={reportRow}
         qrPayload={qrPayload}
         qrNumber={qrNumber}
@@ -223,14 +395,62 @@ export default function DetentionMemoDetailPage() {
     )
   }
 
+  if (goodsOnlyView) {
+    const visibleGoods = (row.goodsItems || []).filter((item) =>
+      goodsMatchesQr(item, row.id, goodsQrFilter)
+    )
+    const goodsLabel =
+      visibleGoods[0]?.description ||
+      visibleGoods[0]?.qrCodeNumber ||
+      goodsQrFilter
+
+    return (
+      <ModulePageLayout
+        title={`Goods: ${goodsLabel}`}
+        description={`Goods line from detention memo ${row.caseNo}.`}
+        breadcrumbs={[
+          { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
+          { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
+          { label: row.caseNo, href: `${ROUTES.DETENTION_MEMO}/${encodeURIComponent(row.id)}` },
+          { label: "Goods" },
+        ]}
+      >
+        <div className="grid gap-4 sm:gap-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to={ROUTES.DETENTION_MEMO}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to list
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to={`${ROUTES.DETENTION_MEMO}/${encodeURIComponent(row.id)}`}>
+                <FileText className="h-4 w-4 mr-2" />
+                View full memo
+              </Link>
+            </Button>
+          </div>
+          <GoodsInformationBlock
+            memoId={row.id}
+            items={visibleGoods}
+            highlightQr={goodsQrFilter}
+          />
+        </div>
+      </ModulePageLayout>
+    )
+  }
+
   // Normal view (screen) – includes sidebar via ModulePageLayout
   return (
     <ModulePageLayout
       title={`Detention Memo: ${row.caseNo}`}
-      description="Pakistan Customs detention memo details. Data from the database."
+      description={
+        row.referenceNumber
+          ? `Memo No. ${row.referenceNumber} · Pakistan Customs detention memo details.`
+          : "Pakistan Customs detention memo details. Data from the database."
+      }
       breadcrumbs={[
-        { label: "WMS" },
-        { label: "Detentions" },
+        { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
         { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
         { label: row.caseNo },
       ]}
@@ -256,7 +476,16 @@ export default function DetentionMemoDetailPage() {
                 <FileText className="h-5 w-5 flex-shrink-0" />
                 <span className="break-words">{row.caseNo}</span>
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Detention memo details and printable report.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {row.referenceNumber ? (
+                  <>
+                    Detention Memo No.{" "}
+                    <span className="font-semibold text-foreground">{row.referenceNumber}</span>
+                  </>
+                ) : (
+                  "Detention memo details and printable report."
+                )}
+              </p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <Badge variant={row.verificationStatus === "Verified" ? "default" : "secondary"} className="w-fit">
@@ -283,8 +512,7 @@ export default function DetentionMemoDetailPage() {
                   <h4 className="text-sm font-semibold mb-3">Basic Information</h4>
                   <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2">
                     <DetailRow label="Case No." value={row.caseNo} />
-                    <DetailRow label="FIR Number" value={row.firNumber} />
-                    <DetailRow label="Reference Number" value={row.referenceNumber} />
+                    <DetailRow label="Detention Memo No." value={row.referenceNumber || "—"} />
                     <DetailRow label="Date/Time of occurrence" value={row.dateTimeOccurrence} />
                     <DetailRow label="Place of occurrence" value={row.placeOfOccurrence} />
                     <DetailRow label="Date/Time of detention" value={row.dateTimeDetention} />
@@ -318,11 +546,44 @@ export default function DetentionMemoDetailPage() {
             <Card>
               <CardHeader><CardTitle className="text-base">Memo Details</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 gap-x-5 md:grid-cols-2">
-                <DetailRow label="Where deposited" value={row.whereDeposited} />
+                <DetailRow label="Goods detained at" value={row.whereDeposited} />
                 <DetailRow label="Settlement Status" value={row.settlementStatus} />
-                <DetailRow label="Posting Date" value={row.createdAt} />
-                <DetailRow label="Updation Date" value={row.updatedAt ?? row.createdAt} />
-                <DetailRow label="Created By" value={row.createdBy || "ASO Portal"} />
+                <DetailRow label="Verification Status" value={row.verificationStatus} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Audit Log</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 gap-x-5 md:grid-cols-2">
+                  <DetailRow label="Created By" value={row.createdBy || "—"} />
+                  <DetailRow label="Created On" value={row.createdAt} />
+                  <DetailRow label="Updated By" value={row.updatedBy || "—"} />
+                  <DetailRow label="Updated On" value={row.updatedAt ?? row.createdAt} />
+                </div>
+                {(row.auditLog?.length ?? 0) > 0 ? (
+                  <ol className="relative border-l border-muted-foreground/30 ml-2 space-y-4">
+                    {row.auditLog!.map((entry) => (
+                      <li key={entry.id} className="ml-4">
+                        <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border bg-primary border-primary" />
+                        <p className="text-sm font-medium">
+                          {entry.actionLabel || entry.action}
+                          {entry.performedBy ? ` · ${entry.performedBy}` : ""}
+                        </p>
+                        {entry.message ? (
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">{entry.message}</p>
+                        ) : null}
+                        <p className="text-xs text-muted-foreground">
+                          {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "—"}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No audit events recorded yet.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -435,126 +696,10 @@ export default function DetentionMemoDetailPage() {
             )}
 
             {row.goodsItems && row.goodsItems.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    Goods Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="rounded-lg border p-0">
-                  <div className="space-y-3 p-3 sm:hidden">
-                    {row.goodsItems.map((item) => (
-                      <div key={item.id} className="rounded-md border bg-background p-3">
-                        <div className="mb-3 flex items-start gap-3">
-                          <img
-                            src={getQrCodeUrl(getGoodsQrPayload(row.id, item), 56)}
-                            alt={`Goods QR ${item.qrCodeNumber || item.id}`}
-                            className="h-14 w-14 rounded border bg-white p-1"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs text-muted-foreground">QR Number</p>
-                            <p className="break-all text-xs font-medium">{item.qrCodeNumber || "—"}</p>
-                          </div>
-                        </div>
-                        <div className="space-y-2 text-sm">
-                          <div><span className="text-muted-foreground">Description: </span><span className="break-words font-medium">{item.description || "—"}</span></div>
-                          <div><span className="text-muted-foreground">PCT: </span>{item.pctCode || "—"}</div>
-                          <div><span className="text-muted-foreground">Qty/Unit: </span>{item.quantity || "—"} / {item.unit || "—"}</div>
-                          <div><span className="text-muted-foreground">Condition: </span>{item.condition || "—"}</div>
-                          <div><span className="text-muted-foreground">Assessable: </span>{item.assessableValuePkr || "—"}</div>
-                          <div><span className="text-muted-foreground">Perishable: </span>{item.perishable ? "Yes" : "No"}</div>
-                          <div><span className="text-muted-foreground">ID/Chassis: </span><span className="break-words">{item.identificationRef || "—"}</span></div>
-                          <div><span className="text-muted-foreground">Notes: </span><span className="break-words">{item.itemNotes || "—"}</span></div>
-                        </div>
-                        <div className="mt-3">
-                          <p className="mb-1 text-xs text-muted-foreground">Images</p>
-                          {item.images && item.images.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {item.images.map((imgUrl, idx) => (
-                                <img
-                                  key={idx}
-                                  src={imgUrl}
-                                  alt={`Goods image ${idx + 1}`}
-                                  className="h-12 w-12 rounded border object-cover"
-                                />
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="hidden overflow-x-auto sm:block">
-                    <ScrollArea className="w-full">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead> QR Code</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>PCT</TableHead>
-                            <TableHead>Qty</TableHead>
-                            <TableHead>Unit</TableHead>
-                            <TableHead>Condition</TableHead>
-                            <TableHead>Assessable</TableHead>
-                            <TableHead>Perishable</TableHead>
-                            <TableHead>ID / Chassis</TableHead>
-                            <TableHead>Item Notes</TableHead>
-                            <TableHead>Images</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {row.goodsItems.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-mono text-xs">
-                                <div className="space-y-1">
-                                  <img
-                                    src={getQrCodeUrl(getGoodsQrPayload(row.id, item), typeof window !== 'undefined' && window.innerWidth < 640 ? 40 : 56)}
-                                    alt={`Goods QR ${item.qrCodeNumber || item.id}`}
-                                    className="h-10 w-10 sm:h-14 sm:w-14 border rounded p-1 bg-white"
-                                  />
-                                  <span className="block text-[10px] text-muted-foreground max-w-[60px] sm:max-w-[80px] break-all">
-                                    {item.qrCodeNumber || "—"}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="font-medium break-words min-w-[120px]">{item.description || "—"}</TableCell>
-                              <TableCell className="font-mono break-words">{item.pctCode || "—"}</TableCell>
-                              <TableCell>{item.quantity || "—"}</TableCell>
-                              <TableCell>{item.unit || "—"}</TableCell>
-                              <TableCell>{item.condition || "—"}</TableCell>
-                              <TableCell className="break-words min-w-[80px]">{item.assessableValuePkr || "—"}</TableCell>
-                              <TableCell>{item.perishable ? "Yes" : "No"}</TableCell>
-                              <TableCell className="break-words min-w-[100px]">{item.identificationRef || "—"}</TableCell>
-                              <TableCell className="text-muted-foreground max-w-[150px] sm:max-w-[200px] truncate">{item.itemNotes || "—"}</TableCell>
-                              <TableCell>
-                                {item.images && item.images.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {item.images.map((imgUrl, idx) => (
-                                      <img
-                                        key={idx}
-                                        src={imgUrl}
-                                        alt={`Goods image ${idx + 1}`}
-                                        className="h-8 w-8 sm:h-10 sm:w-10 object-cover rounded border"
-                                      />
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">—</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  </div>
-                </CardContent>
-              </Card>
+              <GoodsInformationBlock memoId={row.id} items={row.goodsItems} />
             )}
+
+            <WmsFlowOverviewPanel detentionMemoId={row.id} caseNo={row.caseNo} />
 
             <DestructionRecordsPanel
               detentionMemoId={row.id}

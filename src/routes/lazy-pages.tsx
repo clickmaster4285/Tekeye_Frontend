@@ -87,6 +87,60 @@ export const PAGES = {
   CourtProceedings: lazy(() => import("@/pages/seizures/CourtProceedings").then((m) => ({ default: m.default }))),
   LegalDocuments: lazy(() => import("@/pages/seizures/LegalDocuments").then((m) => ({ default: m.default }))),
   CaseStatusTracking: lazy(() => import("@/pages/seizures/CaseStatusTracking").then((m) => ({ default: m.default }))),
+  SeizureManagementDashboard: lazy(() =>
+    import("@/pages/seizure-management/SeizureManagementDashboard").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtNoteSheet: lazy(() =>
+    import("@/pages/seizure-management/NoteSheet").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtNoteSheetCreate: lazy(() =>
+    import("@/pages/seizure-management/NoteSheetCreate").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtNoteSheetEdit: lazy(() =>
+    import("@/pages/seizure-management/NoteSheetCreate").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtNoteSheetDetail: lazy(() =>
+    import("@/pages/seizure-management/NoteSheetDetail").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtAssessment: lazy(() =>
+    import("@/pages/seizure-management/DetentionAssessment").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtAssessmentCreate: lazy(() =>
+    import("@/pages/seizure-management/AssessmentCreate").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtAssessmentEdit: lazy(() =>
+    import("@/pages/seizure-management/AssessmentCreate").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtAssessmentDetail: lazy(() =>
+    import("@/pages/seizure-management/AssessmentDetail").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtDetentionReporting: lazy(() =>
+    import("@/pages/seizure-management/DetentionReporting").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtRecoveryMemo: lazy(() =>
+    import("@/pages/seizure-management/RecoveryMemo").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtRecoveryMemoCreate: lazy(() =>
+    import("@/pages/seizure-management/RecoveryMemoCreate").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtRecoveryMemoDetail: lazy(() =>
+    import("@/pages/seizure-management/RecoveryMemoDetail").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtRecoveryReporting: lazy(() =>
+    import("@/pages/seizure-management/RecoveryReporting").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtSeizureReport: lazy(() =>
+    import("@/pages/seizure-management/SeizureReport").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtSeizureReportCreate: lazy(() =>
+    import("@/pages/seizure-management/SeizureReportCreate").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtSeizureReportDetail: lazy(() =>
+    import("@/pages/seizure-management/SeizureReportDetail").then((m) => ({ default: m.default }))
+  ),
+  SeizureMgmtReports: lazy(() =>
+    import("@/pages/seizure-management/SeizureManagementReports").then((m) => ({ default: m.default }))
+  ),
   InterCollectorateTransfer: lazy(() => import("@/pages/transfers/InterCollectorateTransfer").then((m) => ({ default: m.default }))),
   InternalMovement: lazy(() => import("@/pages/transfers/InternalMovement").then((m) => ({ default: m.default }))),
   HandoverRequests: lazy(() => import("@/pages/transfers/HandoverRequests").then((m) => ({ default: m.default }))),
@@ -116,6 +170,7 @@ export const PAGES = {
     }))
   ),
   ObjectDetection: lazy(() => import("@/pages/cameras/ObjectDetection").then((m) => ({ default: m.default }))),
+  // PersonJourney: lazy(() => import("@/pages/cameras/PersonJourney").then((m) => ({ default: m.default }))),
   AnprSettings: lazy(() => import("@/pages/cameras/AnprSettings").then((m) => ({ default: m.default }))),
   AnomalyDetection: lazy(() => import("@/pages/cameras/AnomalyDetection").then((m) => ({ default: m.default }))),
   Reports: lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.default }))),
