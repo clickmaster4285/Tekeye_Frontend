@@ -2,6 +2,7 @@ import { useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Printer, FileDown } from "lucide-react"
 import html2pdf from "html2pdf.js"
+import { getDetentionMemoDetailPath } from "@/routes/config"
 
 type GoodsLineItem = {
     id: string
@@ -61,7 +62,7 @@ function getQrCodeUrl(data: string, size = 180) {
 
 function getGoodsQrPayload(memoId: string, item: GoodsLineItem): string {
     const ref = item.qrCodeNumber || `${memoId}-${item.id}`
-    return `${window.location.origin}/detention-memo/${encodeURIComponent(memoId)}?goodsQr=${encodeURIComponent(ref)}`
+    return `${window.location.origin}${getDetentionMemoDetailPath(memoId)}?goodsQr=${encodeURIComponent(ref)}&view=goods`
 }
 
 function formatDate(value?: string): string {
@@ -79,7 +80,8 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
     const showPerishable = goodsItems.some((item) => Boolean(item.perishable))
     const showIdentificationRef = goodsItems.some((item) => Boolean(item.identificationRef?.trim()))
     const showNotes = goodsItems.some((item) => Boolean(item.itemNotes?.trim()))
-    const prefersLandscapePdf = goodsItems.length > 5 || showPctCode || showIdentificationRef || showNotes
+    const optionalCols = [showPctCode, showPerishable, showIdentificationRef, showNotes].filter(Boolean).length
+    const useLandscape = optionalCols >= 2 || goodsItems.length > 8
 
     const handlePrint = () => {
         window.print()
@@ -90,78 +92,103 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
 
         const element = reportRef.current
         const opt = {
-            margin: 10,
+            margin: [8, 8, 8, 8] as [number, number, number, number],
             filename: `Detention-Memo-${row.caseNo}-${new Date().getTime()}.pdf`,
-            image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { orientation: prefersLandscapePdf ? "landscape" : "portrait", unit: "mm", format: "a4" },
+            image: { type: "jpeg" as const, quality: 0.98 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                // Match A4 CSS width (~210mm at 96dpi) so capture matches print layout
+                windowWidth: useLandscape ? 1123 : 794,
+            },
+            jsPDF: {
+                orientation: useLandscape ? ("landscape" as const) : ("portrait" as const),
+                unit: "mm" as const,
+                format: "a4" as const,
+            },
+            pagebreak: { mode: ["css", "legacy"] as const },
         }
 
         html2pdf().set(opt).from(element).save()
     }
 
     return (
-        <div className="fixed inset-0 overflow-auto bg-white z-50 w-screen h-screen">
+        <div className="fixed inset-0 overflow-auto bg-neutral-200 z-50 w-screen h-screen">
             <style>{`
         :root {
           color-scheme: light;
         }
         body, html {
-          background: #f3f4f6;
+          background: #e5e7eb;
           color: #111827;
           font-family: Arial, Helvetica, sans-serif;
         }
+        .report-container {
+          display: flex;
+          justify-content: center;
+          padding: 1rem 0 2rem;
+        }
         .report-sheet {
-          max-width: 1200px;
-          margin: 1.5rem auto;
+          /* Exact A4 page geometry for screen preview */
+          width: 210mm;
+          min-height: 297mm;
+          max-width: 210mm;
+          margin: 0 auto;
           background: #fff;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
-          padding: 1.25rem;
-          box-shadow: 0 8px 24px rgba(17, 24, 39, 0.08);
+          border: 1px solid #d1d5db;
+          box-sizing: border-box;
+          padding: 12mm;
+          box-shadow: 0 8px 24px rgba(17, 24, 39, 0.12);
+          overflow: hidden;
+        }
+        .report-sheet.landscape-preview {
+          width: 297mm;
+          max-width: 297mm;
+          min-height: 210mm;
         }
         .header-section {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) 140px;
-          gap: 1rem;
+          grid-template-columns: minmax(0, 1fr) 100px;
+          gap: 0.75rem;
           align-items: start;
           border-bottom: 2px solid #111827;
-          padding-bottom: 0.875rem;
+          padding-bottom: 0.75rem;
         }
         .header-title {
-          font-size: 1.375rem;
+          font-size: 1.25rem;
           font-weight: 700;
-          line-height: 1.3;
+          line-height: 1.25;
         }
         .header-subtitle {
-          margin-top: 0.3rem;
-          font-size: 0.875rem;
+          margin-top: 0.25rem;
+          font-size: 0.8rem;
           color: #4b5563;
         }
         .section-title {
-          font-size: 1rem;
+          font-size: 0.85rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.04em;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.4rem;
           color: #1f2937;
         }
         .box {
           border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          padding: 0.75rem;
+          border-radius: 6px;
+          padding: 0.65rem 0.75rem;
           background: #fff;
         }
         .info-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 0.5rem 1.25rem;
+          gap: 0.35rem 1rem;
         }
         .info-row {
           display: grid;
-          grid-template-columns: 180px minmax(0, 1fr);
-          gap: 0.4rem;
-          font-size: 0.92rem;
+          grid-template-columns: 150px minmax(0, 1fr);
+          gap: 0.35rem;
+          font-size: 0.8rem;
           line-height: 1.35;
         }
         .info-label {
@@ -169,47 +196,66 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
           color: #374151;
         }
         .report-section {
-          margin-top: 1rem;
+          margin-top: 0.85rem;
           page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        .goods-table-wrap {
+          width: 100%;
+          overflow: hidden;
         }
         .goods-table {
           width: 100%;
           border-collapse: collapse;
           table-layout: fixed;
-          font-size: 0.86rem;
+          font-size: 0.72rem;
         }
         .goods-table th,
         .goods-table td {
           border: 1px solid #d1d5db;
-          padding: 0.4rem;
+          padding: 0.3rem 0.25rem;
           text-align: left;
           vertical-align: top;
+          word-break: break-word;
           overflow-wrap: anywhere;
         }
         .goods-table th {
           background: #f3f4f6;
           font-weight: 700;
+          font-size: 0.68rem;
+          line-height: 1.2;
         }
         .goods-table tbody tr:nth-child(even) {
           background: #f9fafb;
         }
+        .goods-qr {
+          width: 40px;
+          height: 40px;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          padding: 2px;
+          background: #fff;
+          display: block;
+        }
         .footer {
-          margin-top: 1rem;
+          margin-top: 0.85rem;
           border-top: 1px solid #d1d5db;
-          padding-top: 0.5rem;
+          padding-top: 0.4rem;
           display: flex;
           justify-content: space-between;
           gap: 1rem;
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           color: #4b5563;
         }
         .qr-container {
           text-align: center;
         }
         .qr-container img {
+          width: 90px;
+          height: 90px;
           border: 1px solid #d1d5db;
           border-radius: 6px;
-          padding: 4px;
+          padding: 3px;
           background: #fff;
         }
         @media print {
@@ -217,50 +263,81 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
             display: none !important;
           }
           @page {
-            size: A4;
+            size: A4 ${useLandscape ? "landscape" : "portrait"};
             margin: 10mm;
           }
-          body, html {
+          html, body {
             background: white !important;
             color: #111827 !important;
-          }
-          .report-sheet {
-            max-width: none;
-            margin: 0;
-            border: 0;
-            border-radius: 0;
-            box-shadow: none;
-            padding: 0;
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           .report-container {
-            width: 100%;
-            background: #fff;
-            color: #111827;
+            display: block;
             padding: 0;
             margin: 0;
+            background: #fff;
+          }
+          .report-sheet,
+          .report-sheet.landscape-preview {
+            width: 100% !important;
+            max-width: none !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            overflow: visible !important;
           }
           .report-section {
             page-break-inside: avoid;
+            break-inside: avoid;
           }
           .info-grid,
           .header-section {
             page-break-inside: avoid;
-          }
-          .info-row {
-            font-size: 10.5pt;
+            break-inside: avoid;
           }
           .goods-table {
-            font-size: 9.8pt;
+            font-size: 8pt;
+          }
+          .goods-table th {
+            font-size: 7.5pt;
           }
           .goods-table th,
           .goods-table td {
-            padding: 5px 4px;
+            padding: 3px 2px;
+          }
+          .goods-qr {
+            width: 32px;
+            height: 32px;
+          }
+          .info-row {
+            font-size: 9pt;
+            grid-template-columns: 140px minmax(0, 1fr);
           }
           .footer {
-            font-size: 9pt;
+            font-size: 8pt;
+          }
+          .qr-container img {
+            width: 80px;
+            height: 80px;
           }
         }
-        @media (max-width: 900px) {
+        @media screen and (max-width: 900px) {
+          .report-sheet,
+          .report-sheet.landscape-preview {
+            width: 100%;
+            max-width: 100%;
+            min-height: auto;
+            margin: 0;
+            border-radius: 0;
+            padding: 1rem;
+          }
           .header-section {
             grid-template-columns: 1fr;
           }
@@ -268,7 +345,7 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
             grid-template-columns: 1fr;
           }
           .info-row {
-            grid-template-columns: 140px minmax(0, 1fr);
+            grid-template-columns: 130px minmax(0, 1fr);
           }
         }
       `}</style>
@@ -285,7 +362,7 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
             </div>
 
             <div ref={reportRef} className="report-container">
-                <div className="report-sheet">
+                <div className={`report-sheet${useLandscape ? " landscape-preview" : ""}`}>
                 {/* Header Section */}
                 <div className="header-section">
                     <div>
@@ -297,9 +374,8 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                         <img
                             src={getQrCodeUrl(qrPayload, 100)}
                             alt="Memo QR Code"
-                            className="qr-img border border-gray-400"
                         />
-                        <div className="text-[10px] mt-2 font-mono text-gray-700">{qrNumber}</div>
+                        <div className="text-[9px] mt-1.5 font-mono text-gray-700 break-all">{qrNumber}</div>
                     </div>
                 </div>
 
@@ -311,9 +387,6 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                         </div>
                         <div className="info-row">
                             <span className="info-label">Reference Number:</span> {row.referenceNumber || "—"}
-                        </div>
-                        <div className="info-row">
-                            <span className="info-label">FIR Number:</span> {row.firNumber || "—"}
                         </div>
                         <div className="info-row">
                             <span className="info-label">Detention Type:</span> {row.detentionType || "—"}
@@ -380,18 +453,19 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                 {hasGoods && (
                     <div className="report-section">
                         <div className="section-title">Goods Information</div>
+                        <div className="goods-table-wrap">
                         <table className="goods-table">
                             <thead>
                                 <tr>
-                                    <th style={{ width: "86px" }}>QR Code</th>
+                                    <th style={{ width: "52px" }}>QR</th>
                                     <th>Description</th>
-                                    <th style={{ width: "66px" }}>Quantity</th>
-                                    <th style={{ width: "58px" }}>Unit</th>
-                                    <th style={{ width: "96px" }}>Condition</th>
-                                    <th style={{ width: "104px" }}>Assessable (PKR)</th>
-                                    {showPctCode && <th style={{ width: "84px" }}>PCT Code</th>}
-                                    {showPerishable && <th style={{ width: "70px" }}>Perishable</th>}
-                                    {showIdentificationRef && <th style={{ width: "110px" }}>ID/Chassis Ref</th>}
+                                    <th style={{ width: "48px" }}>Qty</th>
+                                    <th style={{ width: "42px" }}>Unit</th>
+                                    <th style={{ width: "72px" }}>Condition</th>
+                                    <th style={{ width: "78px" }}>Value (PKR)</th>
+                                    {showPctCode && <th style={{ width: "64px" }}>PCT</th>}
+                                    {showPerishable && <th style={{ width: "52px" }}>Perish.</th>}
+                                    {showIdentificationRef && <th style={{ width: "88px" }}>ID/Chassis</th>}
                                     {showNotes && <th>Notes</th>}
                                 </tr>
                             </thead>
@@ -400,11 +474,13 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                                     <tr key={item.id}>
                                         <td>
                                             <img
-                                                src={getQrCodeUrl(getGoodsQrPayload(row.id, item), 64)}
+                                                src={getQrCodeUrl(getGoodsQrPayload(row.id, item), 48)}
                                                 alt={`Goods QR ${item.qrCodeNumber || item.id}`}
-                                                className="h-12 w-12 border rounded p-1 bg-white"
+                                                className="goods-qr"
                                             />
-                                            {item.qrCodeNumber && <div className="text-[8pt] mt-1 break-all">{item.qrCodeNumber}</div>}
+                                            {item.qrCodeNumber && (
+                                                <div className="text-[7pt] mt-0.5 leading-tight break-all">{item.qrCodeNumber}</div>
+                                            )}
                                         </td>
                                         <td>{item.description || "—"}</td>
                                         <td>{item.quantity || "—"}</td>
@@ -419,6 +495,7 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 )}
 
@@ -426,7 +503,7 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                 {(row.seizingOfficerNotes || row.examiningOfficerNotes || row.detentionNotes || row.forwardingOfficerRemarks) && (
                     <div className="report-section">
                         <div className="section-title">Additional Notes & Remarks</div>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {row.seizingOfficerNotes && (
                                 <div className="box">
                                     <div className="text-[9pt] font-bold text-gray-700 mb-1">Seizing Officer Notes:</div>

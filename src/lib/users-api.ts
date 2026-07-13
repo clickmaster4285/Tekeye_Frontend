@@ -196,6 +196,49 @@ export async function fetchUsers(): Promise<ApiUser[]> {
   return rows as ApiUser[];
 }
 
+/** Active users at the caller's location (any authenticated role). */
+export async function fetchLocationColleagues(options?: {
+  excludeSelf?: boolean;
+}): Promise<ApiUser[]> {
+  if (!getStoredToken()) return [];
+
+  const q = new URLSearchParams();
+  if (options?.excludeSelf === false) q.set("excludeSelf", "0");
+  const qs = q.toString();
+  const res = await fetch(`${USERS_ENDPOINT}colleagues/${qs ? `?${qs}` : ""}`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await parseApiError(res));
+  const data: unknown = await res.json();
+  return Array.isArray(data) ? (data as ApiUser[]) : [];
+}
+
+/** Current logged-in user profile (any authenticated role). */
+export async function fetchCurrentUser(): Promise<ApiUser> {
+  const res = await fetch(`${USERS_ENDPOINT}me/`, {
+    headers: getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(await parseApiError(res));
+  return (await res.json()) as ApiUser;
+}
+
+function isPlaceholderPhone(value: string | undefined | null): boolean {
+  const digits = (value || "").replace(/\D/g, "");
+  return !digits || /^0+$/.test(digits);
+}
+
+export function pickUserContact(
+  user: Pick<ApiUser, "cell_no" | "phone" | "office_phone_1" | "office_phone_2">
+): string {
+  for (const candidate of [user.cell_no, user.office_phone_1, user.office_phone_2, user.phone]) {
+    const v = (candidate || "").trim();
+    if (v && !isPlaceholderPhone(v)) return v;
+  }
+  return "";
+}
+
 export async function fetchUserById(id: number): Promise<ApiUser> {
   const res = await fetch(`${USERS_ENDPOINT}${id}/`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error(await parseApiError(res));

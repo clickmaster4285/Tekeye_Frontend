@@ -79,6 +79,7 @@ export const ROUTES = {
   ANALYTICS_CAMERA_MANAGEMENT: "/analytics/camera-management",
   ANALYTICS_CAMERA_MANAGEMENT_VIEW: "/analytics/camera-management/:id",
   OBJECT_DETECTION: "/object-detection",
+  PERSON_JOURNEY: "/person-journey",
   ANPR_SETTINGS: "/anpr-settings",
   ANOMALY_DETECTION: "/anomaly-detection",
 
@@ -86,8 +87,10 @@ export const ROUTES = {
   DEPOSIT_ACCOUNT_REGISTER: "/deposit-account-register",
   /** Detail view path; use getDepositAccountRegisterDetailPath(id). */
   DEPOSIT_ACCOUNT_REGISTER_DETAIL: "/deposit-account-register/:id",
-  DETENTION_MEMO: "/detention-memo",
-  DETENTION_MEMO_CREATE: "/detention-memo/create",
+  DETENTION_MEMO: "/seizure-management/detention-memo",
+  DETENTION_MEMO_CREATE: "/seizure-management/detention-memo/create",
+  /** Legacy path kept for QR / bookmarks; prefer DETENTION_MEMO. */
+  DETENTION_MEMO_LEGACY: "/detention-memo",
   SEIZED_INVENTORY: "/seized-inventory",
   // Seizures & cases
   NEW_SEIZURE_ENTRY: "/new-seizure-entry",
@@ -100,6 +103,26 @@ export const ROUTES = {
   COURT_PROCEEDINGS: "/court-proceedings",
   LEGAL_DOCUMENTS: "/legal-documents",
   CASE_STATUS_TRACKING: "/case-status-tracking",
+
+  // Seizure Management
+  SEIZURE_MANAGEMENT: "/seizure-management",
+  SEIZURE_MGMT_NOTE_SHEET: "/seizure-management/note-sheet",
+  SEIZURE_MGMT_NOTE_SHEET_CREATE: "/seizure-management/note-sheet/create",
+  SEIZURE_MGMT_NOTE_SHEET_EDIT: "/seizure-management/note-sheet/:id/edit",
+  SEIZURE_MGMT_NOTE_SHEET_DETAIL: "/seizure-management/note-sheet/:id",
+  SEIZURE_MGMT_ASSESSMENT: "/seizure-management/assessment",
+  SEIZURE_MGMT_ASSESSMENT_CREATE: "/seizure-management/assessment/create",
+  SEIZURE_MGMT_ASSESSMENT_EDIT: "/seizure-management/assessment/:id/edit",
+  SEIZURE_MGMT_ASSESSMENT_DETAIL: "/seizure-management/assessment/:id",
+  SEIZURE_MGMT_DETENTION_REPORTING: "/seizure-management/detention-reporting",
+  SEIZURE_MGMT_RECOVERY_MEMO: "/seizure-management/recovery-memo",
+  SEIZURE_MGMT_RECOVERY_MEMO_CREATE: "/seizure-management/recovery-memo/create",
+  SEIZURE_MGMT_RECOVERY_MEMO_DETAIL: "/seizure-management/recovery-memo/:id",
+  SEIZURE_MGMT_RECOVERY_REPORTING: "/seizure-management/recovery-reporting",
+  SEIZURE_MGMT_SEIZURE_REPORT: "/seizure-management/seizure-report",
+  SEIZURE_MGMT_SEIZURE_REPORT_CREATE: "/seizure-management/seizure-report/create",
+  SEIZURE_MGMT_SEIZURE_REPORT_DETAIL: "/seizure-management/seizure-report/:id",
+  SEIZURE_MGMT_REPORTS: "/seizure-management/reports",
 
   // Transfers
   INTER_COLLECTORATE_TRANSFER: "/inter-collectorate-transfer",
@@ -192,6 +215,14 @@ export function getEmployeeDetailPath(id: number): string {
   return `/employees/${id}`
 }
 
+/** Person journey lookup by PQR code */
+export function getPersonJourneyPath(qrCode?: string): string {
+  if (qrCode?.trim()) {
+    return `${ROUTES.PERSON_JOURNEY}?qr=${encodeURIComponent(qrCode.trim())}`
+  }
+  return ROUTES.PERSON_JOURNEY
+}
+
 /** Build path to user detail page */
 export function getUserDetailPath(id: number): string {
   return `/settings/users/${id}`
@@ -230,6 +261,24 @@ export function getDestructionDetailPath(id: string): string {
 }
 export function getSeizedInventoryDetailPath(id: string): string {
   return `${ROUTES.SEIZED_INVENTORY}/${encodeURIComponent(id)}`
+}
+export function getSeizureMgmtRecoveryMemoDetailPath(id: string): string {
+  return `${ROUTES.SEIZURE_MGMT_RECOVERY_MEMO}/${encodeURIComponent(id)}`
+}
+export function getSeizureMgmtSeizureReportDetailPath(id: string): string {
+  return `${ROUTES.SEIZURE_MGMT_SEIZURE_REPORT}/${encodeURIComponent(id)}`
+}
+export function getSeizureMgmtNoteSheetDetailPath(id: string): string {
+  return `${ROUTES.SEIZURE_MGMT_NOTE_SHEET}/${encodeURIComponent(id)}`
+}
+export function getSeizureMgmtNoteSheetEditPath(id: string): string {
+  return `${ROUTES.SEIZURE_MGMT_NOTE_SHEET}/${encodeURIComponent(id)}/edit`
+}
+export function getSeizureMgmtAssessmentDetailPath(id: string): string {
+  return `${ROUTES.SEIZURE_MGMT_ASSESSMENT}/${encodeURIComponent(id)}`
+}
+export function getSeizureMgmtAssessmentEditPath(id: string): string {
+  return `${ROUTES.SEIZURE_MGMT_ASSESSMENT}/${encodeURIComponent(id)}/edit`
 }
 export function getActivityLogDetailPath(id: number | string): string {
   return `${ROUTES.LOGS}/${encodeURIComponent(String(id))}`
@@ -326,13 +375,13 @@ const ALL_NAV_ITEMS: (NavItem | NavGroup)[] = [
         label: "Dashboard", href: ROUTES.OPERATIONS_DASHBOARD,
       },
 
-      {
-        label: "Detentions",
-        children: [
-          { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
-          // { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
-        ],
-      },
+      // {
+      //   label: "Detentions",
+      //   children: [
+      //     // { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
+      //     // { label: "Detention Memo", href: ROUTES.DETENTION_MEMO },
+      //   ],
+      // },
       {
         label: "Deposit Account",
         children: [
@@ -351,6 +400,8 @@ const ALL_NAV_ITEMS: (NavItem | NavGroup)[] = [
           { label: "Seizure Register", href: ROUTES.SEIZURE_REGISTER },
         ],
       },
+      { label: "Destruction", href: ROUTES.DESTRUCTION },
+
       {
         label: "Warehouse",
         children: [
@@ -359,7 +410,6 @@ const ALL_NAV_ITEMS: (NavItem | NavGroup)[] = [
           { label: "Storage Allocation", href: ROUTES.STORAGE_ALLOCATION },
           { label: "Stock Reconciliation", href: ROUTES.STOCK_RECONCILIATION },
           { label: "Release Inventory", href: ROUTES.RELEASE_INVENTORY },
-          { label: "Destruction", href: ROUTES.DESTRUCTION },
           { label: "Camera Integration", href: ROUTES.CAMERA_INTEGRATION },
         ],
       },
@@ -423,6 +473,41 @@ const ALL_NAV_ITEMS: (NavItem | NavGroup)[] = [
     ],
   },
   {
+    label: "Seizure Management",
+    overviewHref: ROUTES.SEIZURE_MANAGEMENT,
+    children: [
+      { label: "Dashboard", href: ROUTES.SEIZURE_MANAGEMENT },
+      {
+        label: "Note Sheet",
+        children: [
+          { label: "Note Sheets", href: ROUTES.SEIZURE_MGMT_NOTE_SHEET },
+        ],
+      },
+      {
+        label: "Detention",
+        children: [
+          { label: "New Detention Memo", href: ROUTES.DETENTION_MEMO },
+          { label: "Assessment", href: ROUTES.SEIZURE_MGMT_ASSESSMENT },
+          { label: "Reporting", href: ROUTES.SEIZURE_MGMT_DETENTION_REPORTING },
+        ],
+      },
+      {
+        label: "Recovery Memo",
+        children: [
+          { label: "Create Recovery Memo", href: ROUTES.SEIZURE_MGMT_RECOVERY_MEMO },
+          { label: "Reporting", href: ROUTES.SEIZURE_MGMT_RECOVERY_REPORTING },
+        ],
+      },
+      {
+        label: "Seizure Report",
+        children: [
+          { label: "Create Seizure Report", href: ROUTES.SEIZURE_MGMT_SEIZURE_REPORT },
+        ],
+      },
+      { label: "Reports", href: ROUTES.SEIZURE_MGMT_REPORTS },
+    ],
+  },
+  {
     label: "Human Resource",
     children: [
       { label: "Employees", href: ROUTES.EMPLOYEES },
@@ -478,6 +563,7 @@ const ALL_NAV_ITEMS: (NavItem | NavGroup)[] = [
         children: [
           { label: "Cameras", href: ROUTES.CAMERA_MANAGEMENT },
           { label: "Object Detection", href: ROUTES.OBJECT_DETECTION },
+          { label: "Person Journey", href: ROUTES.PERSON_JOURNEY },
           { label: "ANPR Settings", href: ROUTES.ANPR_SETTINGS },
           { label: "Anomaly Detection", href: ROUTES.ANOMALY_DETECTION },
         ],
@@ -559,17 +645,18 @@ const ALL_NAV_ITEMS: (NavItem | NavGroup)[] = [
 /** Sidebar navigation sections: each has a title and list of groups or items */
 export const NAV_SECTIONS: { title: string; items: (NavItem | NavGroup)[] }[] = [
   { title: "Main Menu", items: ALL_NAV_ITEMS.slice(0, 1) },
-  { title: "Management System", items: ALL_NAV_ITEMS.slice(1, 7) },
-  { title: "Reports and Monitoring", items: ALL_NAV_ITEMS.slice(7, 8) },
-  { title: "System", items: ALL_NAV_ITEMS.slice(8, 9) },
+  { title: "Management System", items: ALL_NAV_ITEMS.slice(1, 8) },
+  { title: "Reports and Monitoring", items: ALL_NAV_ITEMS.slice(8, 9) },
+  { title: "System", items: ALL_NAV_ITEMS.slice(9, 10) },
 ]
 
 export type NavSection = { title: string; items: (NavItem | NavGroup)[] }
 
 const VISITOR_MANAGEMENT_NAV = ALL_NAV_ITEMS[1] as NavGroup
 const WAREHOUSE_MANAGEMENT_NAV = ALL_NAV_ITEMS[2] as NavGroup
-const HUMAN_RESOURCE_NAV = ALL_NAV_ITEMS[3] as NavGroup
-const AUCTION_MANAGEMENT_NAV = ALL_NAV_ITEMS[6] as NavGroup
+const SEIZURE_MANAGEMENT_NAV = ALL_NAV_ITEMS[3] as NavGroup
+const HUMAN_RESOURCE_NAV = ALL_NAV_ITEMS[4] as NavGroup
+const AUCTION_MANAGEMENT_NAV = ALL_NAV_ITEMS[7] as NavGroup
 
 const VEHICLE_MANAGEMENT_NAV: NavGroup = {
   label: "Vehicle Management",
@@ -660,12 +747,14 @@ export const RECEPTIONIST_NAV_SECTIONS: NavSection[] = [
 export const WAREHOUSE_OFFICER_NAV_SECTIONS: NavSection[] = [
   { title: "Main Menu", items: [ALL_NAV_ITEMS[0]] },
   { title: "Warehouse Management", items: [WAREHOUSE_MANAGEMENT_NAV] },
+  { title: "Seizure Management", items: [SEIZURE_MANAGEMENT_NAV] },
 ]
 
 export const WAREHOUSE_SUPERINTENDENT_NAV_SECTIONS: NavSection[] = [
   { title: "Main Menu", items: [ALL_NAV_ITEMS[0]] },
   { title: "Visitor Management", items: [VISITOR_OVERVIEW_NAV] },
   { title: "Warehouse Management", items: [WAREHOUSE_SUPERINTENDENT_WAREHOUSE_NAV] },
+  { title: "Seizure Management", items: [SEIZURE_MANAGEMENT_NAV] },
   { title: "Vehicle Management", items: [VEHICLE_MANAGEMENT_NAV] },
   { title: "Incident Management", items: [INCIDENT_MANAGEMENT_NAV] },
   { title: "Auction Management", items: [AUCTION_MANAGEMENT_NAV] },
@@ -682,6 +771,7 @@ export const WAREHOUSE_IN_CHARGE_NAV_SECTIONS: NavSection[] = [
 export const EXAMINATION_OFFICER_NAV_SECTIONS: NavSection[] = [
   { title: "Main Menu", items: [ALL_NAV_ITEMS[0]] },
   { title: "Warehouse Management", items: [EXAMINATION_OFFICER_WAREHOUSE_NAV] },
+  { title: "Seizure Management", items: [SEIZURE_MANAGEMENT_NAV] },
 ]
 
 export const STOCK_CONTROLLER_NAV_SECTIONS: NavSection[] = [
@@ -693,6 +783,7 @@ export const AUDITOR_NAV_SECTIONS: NavSection[] = [
   { title: "Main Menu", items: [ALL_NAV_ITEMS[0]] },
   { title: "Visitor Management", items: [VISITOR_OVERVIEW_NAV] },
   { title: "Warehouse Management", items: [AUDITOR_WAREHOUSE_NAV] },
+  { title: "Seizure Management", items: [SEIZURE_MANAGEMENT_NAV] },
   { title: "Vehicle Management", items: [VEHICLE_MANAGEMENT_NAV] },
   { title: "Incident Management", items: [INCIDENT_MANAGEMENT_NAV] },
   { title: "Auction Management", items: [AUCTION_MANAGEMENT_NAV] },

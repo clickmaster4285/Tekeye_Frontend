@@ -1,5 +1,6 @@
 import type { DetentionMemoApiRecord, DetentionMemoGoodsLineApi } from "@/lib/detention-memo-api"
 import { fetchDetentionMemoById } from "@/lib/detention-memo-api"
+import { apiStockToWmsRow, promoteSeizure } from "@/lib/wms-flow-api"
 
 export const STOCK_STORAGE_KEY = "wms_stock_management"
 export const SEIZED_STORAGE_KEY = "wms_seized_inventory"
@@ -233,13 +234,46 @@ function upsertDepositOnlySeizedEntry(deposit: DepositSeizeInput, reason: string
   saveSeizedInventory(seizedList)
 }
 
-/** When a detention is seized: add to seizure register and create/update inventory stock rows. */
-export function promoteDetentionToSeizedAndInventory(memo: DetentionMemoApiRecord): boolean {
+/** When a detention is seized: API + local seizure register and stock rows. */
+export async function promoteDetentionToSeizedAndInventory(
+  memo: DetentionMemoApiRecord,
+  opts?: { depositAccountId?: string; source?: string; remarks?: string }
+): Promise<boolean> {
   if (typeof window === "undefined") return false
-  upsertSeizedMemoEntry(memo)
-  upsertStockRowsFromMemo(memo)
-  notifyWmsStockUpdated()
-  return true
+  try {
+    const result = await promoteSeizure({
+      detentionMemoId: memo.id,
+      depositAccountId: opts?.depositAccountId,
+      source: opts?.source || "detention_memo",
+      remarks: opts?.remarks,
+    })
+    upsertSeizedMemoEntry({
+      ...memo,
+      settlementStatus: memo.settlementStatus || "Forwarded to seizure",
+      dispositionStatus: memo.dispositionStatus || "In Warehouse",
+    })
+    const stockRows = loadStockRows()
+    const nextStock = [...stockRows]
+    for (const apiRow of result.stockItems) {
+      const mapped = apiStockToWmsRow(apiRow)
+      const idx = nextStock.findIndex(
+        (r) =>
+          r.id === mapped.id ||
+          (mapped.qrCodeNumber && r.qrCodeNumber?.toLowerCase() === mapped.qrCodeNumber.toLowerCase())
+      )
+      if (idx >= 0) nextStock[idx] = { ...nextStock[idx], ...mapped }
+      else nextStock.unshift(mapped)
+    }
+    if (result.stockItems.length === 0) upsertStockRowsFromMemo(memo)
+    else saveStockRows(nextStock)
+    notifyWmsStockUpdated()
+    return true
+  } catch {
+    upsertSeizedMemoEntry(memo)
+    upsertStockRowsFromMemo(memo)
+    notifyWmsStockUpdated()
+    return true
+  }
 }
 
 /** Deposit / release flows: load linked memo goods when possible, else create deposit stock row. */
@@ -252,7 +286,11 @@ export async function promoteDepositToSeizedAndInventory(
   if (memoId) {
     try {
       const memo = await fetchDetentionMemoById(memoId)
-      return promoteDetentionToSeizedAndInventory(memo)
+      return promoteDetentionToSeizedAndInventory(memo, {
+        depositAccountId: deposit.id,
+        source: "deposit_forward",
+        remarks: reason,
+      })
     } catch {
       // Fall through to deposit-only row when memo is unavailable.
     }

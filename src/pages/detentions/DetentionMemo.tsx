@@ -127,7 +127,11 @@ export default function DetentionMemoPage() {
   const filteredRows = useMemo(() => {
     if (!caseNumberSearch.trim()) return rows
     const q = caseNumberSearch.trim().toLowerCase()
-    return rows.filter((r) => r.caseNo.toLowerCase().includes(q))
+    return rows.filter(
+      (r) =>
+        r.caseNo.toLowerCase().includes(q) ||
+        (r.referenceNumber ?? "").toLowerCase().includes(q)
+    )
   }, [rows, caseNumberSearch])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
@@ -136,8 +140,9 @@ export default function DetentionMemoPage() {
   const handleSearch = () => setPage(1)
   const handleClear = () => { setCaseNumberSearch(""); setPage(1) }
   
-  const handleSeize = (row: DetentionMemoRow) => {
-    if (promoteDetentionToSeizedAndInventory(row)) {
+  const handleSeize = async (row: DetentionMemoRow) => {
+    const ok = await promoteDetentionToSeizedAndInventory(row)
+    if (ok) {
       alert(
         `✓ Case ${row.caseNo || row.id} added to Seizure Register and Stock Management.\n` +
           "All goods lines are in stock with the detention case number linked."
@@ -155,7 +160,7 @@ export default function DetentionMemoPage() {
         treasuryChallanNo: "",
         depositType: "Detention",
         caseSeizureRef: row.caseNo,
-        firNo: row.firNumber ?? "",
+        firNo: "",
         customsStation: row.placeOfDetention,
         amount: "",
         depositDate: new Date().toISOString().slice(0, 10),
@@ -212,7 +217,10 @@ export default function DetentionMemoPage() {
     <ModulePageLayout
       title="Detention Memo"
       description="Create, view, and print detention memo records with QR-enabled report access. Deposit is available once per memo (disabled after a linked Deposit Account Register entry exists)."
-      breadcrumbs={[{ label: "WMS" }, { label: "Detentions" }, { label: "Detention Memo" }]}
+      breadcrumbs={[
+        { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
+        { label: "Detention Memo" },
+      ]}
     >
       <div className="grid gap-6">
         <Card className="w-full min-w-0 border-0 shadow-sm">
@@ -227,16 +235,24 @@ export default function DetentionMemoPage() {
             )}
             {/* Header with Add Button */}
             <div className="mb-6 flex flex-wrap items-start justify-between gap-3 sm:items-center sm:gap-4">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" asChild>
-                <Link to={ROUTES.DETENTION_MEMO_CREATE}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add New Detention Memo
-                </Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm" asChild>
+                  <Link to={ROUTES.SEIZURE_MGMT_NOTE_SHEET}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Note Sheet / New Detention
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to={ROUTES.DETENTION_MEMO_CREATE}>
+                    Create Detention Memo
+                  </Link>
+                </Button>
+              </div>
               <div className="flex w-full flex-col gap-1 text-sm text-muted-foreground sm:w-auto sm:items-end">
                 <span>
                   Total Records: <span className="font-semibold text-foreground">{filteredRows.length}</span>
                 </span>
+                <p className="text-xs">Detention memo requires an approved note sheet.</p>
                 <Link className="text-primary hover:underline" to={ROUTES.DEPOSIT_ACCOUNT_REGISTER}>
                   Open Deposit Account Register
                 </Link>
@@ -304,8 +320,8 @@ export default function DetentionMemoPage() {
                           <p className="font-medium">{row.caseNo}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">FIR Number</p>
-                          <p className="font-mono text-xs">{row.firNumber || "—"}</p>
+                          <p className="text-xs text-muted-foreground">Detention Memo No</p>
+                          <p className="font-mono text-xs">{row.referenceNumber || "—"}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Detention Date/Time</p>
@@ -359,7 +375,7 @@ export default function DetentionMemoPage() {
                         >
                           <BookOpen className="mr-1 h-3.5 w-3.5" /> Deposit
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleSeize(row)} className="h-8 px-2">
+                        <Button variant="outline" size="sm" onClick={() => void handleSeize(row)} className="h-8 px-2">
                           <Package className="mr-1 h-3.5 w-3.5" /> Seize
                         </Button>
                         <Button variant="outline" size="sm" onClick={() => handleEdit(row)} className="h-8 px-2">
@@ -383,7 +399,7 @@ export default function DetentionMemoPage() {
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="w-[80px] font-semibold">Sr.No</TableHead>
                       <TableHead className="font-semibold">Case Number</TableHead>
-                      <TableHead className="font-semibold">FIR Number</TableHead>
+                      <TableHead className="font-semibold">Detention Memo No</TableHead>
                       <TableHead className="font-semibold">Detention Date/Time</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
                       <TableHead className="font-semibold">Posting Date</TableHead>
@@ -411,7 +427,7 @@ export default function DetentionMemoPage() {
                               {serialInfo ? `${serialInfo.serialNo}/${serialInfo.year}` : row.serialNo ?? index + 1}
                             </TableCell>
                             <TableCell className="font-medium">{row.caseNo}</TableCell>
-                            <TableCell className="font-mono text-xs">{row.firNumber || "—"}</TableCell>
+                            <TableCell className="font-mono text-xs">{row.referenceNumber || "—"}</TableCell>
                             <TableCell className="whitespace-nowrap text-sm">{row.dateTimeDetention || "—"}</TableCell>
                             <TableCell>
                               {row.verificationStatus === "Verified" ? (
@@ -470,7 +486,7 @@ export default function DetentionMemoPage() {
                                 >
                                   <BookOpen className="h-3.5 w-3.5 mr-1" /> Deposit
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => handleSeize(row)} className="h-8 px-2">
+                                <Button variant="outline" size="sm" onClick={() => void handleSeize(row)} className="h-8 px-2">
                                   <Package className="h-3.5 w-3.5 mr-1" /> Seize
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={() => handleEdit(row)} className="h-8 px-2">

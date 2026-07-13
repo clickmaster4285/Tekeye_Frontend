@@ -10,6 +10,15 @@ export type AuthUser = {
   role: string;
   phone: string;
   location?: string;
+  full_name?: string;
+  designation?: string;
+  employee_id?: string;
+  cell_no?: string;
+  office_phone_1?: string;
+  office_phone_2?: string;
+  collectorate?: string;
+  department?: string;
+  is_active?: boolean;
 };
 
 export function setAuthenticated() {

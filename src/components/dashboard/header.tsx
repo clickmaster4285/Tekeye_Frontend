@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Search, Bell, HelpCircle, User, LogOut, Menu } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -6,14 +6,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { clearAuth, getStoredUser } from "@/lib/auth"
+import { clearAuth, getStoredUser, isAuthenticated } from "@/lib/auth"
 import { clearLegacyVmsLocalStorage } from "@/lib/vms-list-api"
 import { getRoleDisplayLabel } from "@/lib/role-access"
 import { isGlobalAdmin } from "@/lib/location-access"
 import { locationLabel } from "@/lib/locations"
-import { ROUTES } from "@/routes/config"
+import { ROUTES, getSeizureMgmtAssessmentDetailPath, getSeizureMgmtNoteSheetDetailPath, getSeizureMgmtRecoveryMemoDetailPath } from "@/routes/config"
+import {
+  fetchNoteSheetNotifications,
+  markAllNoteSheetNotificationsRead,
+  markNoteSheetNotificationRead,
+  type NoteSheetNotificationItem,
+} from "@/lib/seizure-management-api"
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -23,6 +31,28 @@ export function Header({ onMenuClick }: HeaderProps) {
   const navigate = useNavigate()
   const user = getStoredUser()
   const [searchInput, setSearchInput] = useState("")
+  const [notifications, setNotifications] = useState<NoteSheetNotificationItem[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifOpen, setNotifOpen] = useState(false)
+
+  const loadNotifications = useCallback(() => {
+    if (!isAuthenticated()) return
+    fetchNoteSheetNotifications()
+      .then((data) => {
+        setNotifications(data.results || [])
+        setUnreadCount(data.unreadCount || 0)
+      })
+      .catch(() => {
+        setNotifications([])
+        setUnreadCount(0)
+      })
+  }, [])
+
+  useEffect(() => {
+    loadNotifications()
+    const id = window.setInterval(loadNotifications, 60_000)
+    return () => window.clearInterval(id)
+  }, [loadNotifications])
 
   const handleLogout = () => {
     clearAuth()
@@ -30,7 +60,37 @@ export function Header({ onMenuClick }: HeaderProps) {
     navigate(ROUTES.LOGIN, { replace: true })
   }
 
-  const displayName = user?.username?.trim() || "User"
+  const openNotification = async (n: NoteSheetNotificationItem) => {
+    try {
+      if (!n.isRead) await markNoteSheetNotificationRead(n.id)
+    } catch {
+      /* ignore */
+    }
+    setNotifOpen(false)
+    loadNotifications()
+    if (n.hrefKind === "recovery" || n.recoveryMemoId) {
+      if (n.recoveryMemoId) navigate(getSeizureMgmtRecoveryMemoDetailPath(n.recoveryMemoId))
+      return
+    }
+    if (n.hrefKind === "assessment" || n.assessmentId) {
+      if (n.assessmentId) navigate(getSeizureMgmtAssessmentDetailPath(n.assessmentId))
+      return
+    }
+    if (n.noteSheetId) {
+      navigate(getSeizureMgmtNoteSheetDetailPath(n.noteSheetId))
+    }
+  }
+
+  const markAllRead = async () => {
+    try {
+      await markAllNoteSheetNotificationsRead()
+      loadNotifications()
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const displayName = user?.full_name?.trim() || user?.username?.trim() || "User"
   const role = getRoleDisplayLabel(user?.role)
   const locationName = user?.location
     ? locationLabel(user.location)
@@ -56,7 +116,6 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        {/* Search bar - rounded, light gray border */}
         <div className="flex min-w-0 flex-1 items-center rounded-[10px] border border-gray-200 bg-white py-2 pl-2 pr-2 sm:pl-4 sm:pr-3.5 md:max-w-[452px]">
           <Search className="w-5 h-5 text-gray-400 shrink-0" />
           <input
@@ -69,68 +128,113 @@ export function Header({ onMenuClick }: HeaderProps) {
         </div>
       </div>
 
-      <span className="shrink-0 px-2 text-center font-bold text-[#101727] text-sm sm:text-base">
-        {/* Version 1.0 */}
-      </span>
+      <span className="shrink-0 px-2 text-center font-bold text-[#101727] text-sm sm:text-base" />
 
       <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2">
-      {/* Notifications (bell with red dot) + Help */}
-      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        <button
-          type="button"
-          className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-          aria-label="Notifications"
-        >
-          <Bell className="w-6 h-6" />
-          <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"
-            aria-hidden
-          />
-        </button>
-        <button
-          type="button"
-          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-          aria-label="Help"
-        >
-          <HelpCircle className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Vertical separator */}
-      <div className="mx-1 h-8 w-px shrink-0 bg-gray-200 sm:mx-2" aria-hidden />
-
-      {/* User profile: name, role, avatar */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <DropdownMenu
+            open={notifOpen}
+            onOpenChange={(open) => {
+              setNotifOpen(open)
+              if (open) loadNotifications()
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell className="w-6 h-6" />
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute top-1.5 right-1.5 min-w-[0.5rem] h-2 w-2 bg-red-500 rounded-full ring-2 ring-white"
+                    aria-hidden
+                  />
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[360px] max-h-[420px] overflow-y-auto p-0">
+              <div className="flex items-center justify-between px-3 py-2">
+                <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => void markAllRead()}
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <p className="px-3 py-6 text-sm text-muted-foreground text-center">
+                  No approval notifications
+                </p>
+              ) : (
+                notifications.map((n) => (
+                  <DropdownMenuItem
+                    key={n.id}
+                    className={`flex flex-col items-start gap-0.5 px-3 py-2.5 cursor-pointer ${
+                      n.isRead ? "" : "bg-primary/5"
+                    }`}
+                    onClick={() => void openNotification(n)}
+                  >
+                    <span className="text-sm font-medium text-foreground line-clamp-1">{n.title}</span>
+                    <span className="text-xs text-muted-foreground line-clamp-2">{n.message}</span>
+                    {n.createdAt && (
+                      <span className="text-[10px] text-muted-foreground mt-0.5">
+                        {new Date(n.createdAt).toLocaleString()}
+                      </span>
+                    )}
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             type="button"
-            className="flex shrink-0 items-center gap-2 rounded-lg py-1.5 pl-1 text-left transition-colors hover:bg-gray-50 sm:gap-3 sm:pl-2"
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+            aria-label="Help"
           >
-            <div className="hidden flex-col items-start sm:flex">
-              <span className="text-[#101727] text-sm font-semibold">{displayName}</span>
-              <span className="text-[#697282] text-xs">{roleLine}</span>
-            </div>
-            <Avatar className="h-10 w-10 rounded-full border-2 border-gray-100 shrink-0">
-              <AvatarImage
-                src="https://randomuser.me/api/portraits/women/44.jpg"
-                alt={displayName}
-              />
-              <AvatarFallback className="bg-gray-200 text-[#6B7280] text-sm">
-                {initials || <User className="w-5 h-5" />}
-              </AvatarFallback>
-            </Avatar>
+            <HelpCircle className="w-6 h-6" />
           </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem
-            onClick={handleLogout}
-            className="text-destructive focus:text-destructive cursor-pointer"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Log out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </div>
+
+        <div className="mx-1 h-8 w-px shrink-0 bg-gray-200 sm:mx-2" aria-hidden />
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex shrink-0 items-center gap-2 rounded-lg py-1.5 pl-1 text-left transition-colors hover:bg-gray-50 sm:gap-3 sm:pl-2"
+            >
+              <div className="hidden flex-col items-start sm:flex">
+                <span className="text-[#101727] text-sm font-semibold">{displayName}</span>
+                <span className="text-[#697282] text-xs">{roleLine}</span>
+              </div>
+              <Avatar className="h-10 w-10 rounded-full border-2 border-gray-100 shrink-0">
+                <AvatarImage
+                  src="https://randomuser.me/api/portraits/women/44.jpg"
+                  alt={displayName}
+                />
+                <AvatarFallback className="bg-gray-200 text-[#6B7280] text-sm">
+                  {initials || <User className="w-5 h-5" />}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   )

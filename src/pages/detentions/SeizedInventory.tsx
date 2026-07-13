@@ -70,7 +70,6 @@ export default function SeizedInventoryPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Case Number</TableHead>
-                      <TableHead>FIR Number</TableHead>
                       <TableHead>Detention Date/Time</TableHead>
                       <TableHead>Seized Date</TableHead>
                       <TableHead className="text-right">Action</TableHead>
@@ -79,7 +78,7 @@ export default function SeizedInventoryPage() {
                   <TableBody>
                     {rows.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                           No seized inventory. Use &quot;Seize&quot; on a Detention Memo to add it here.
                         </TableCell>
                       </TableRow>
@@ -87,7 +86,6 @@ export default function SeizedInventoryPage() {
                       rows.map((row) => (
                         <TableRow key={row.id}>
                           <TableCell className="font-medium">{row.caseNo}</TableCell>
-                          <TableCell className="font-mono">{row.firNumber || "—"}</TableCell>
                           <TableCell>{row.dateTimeDetention || "—"}</TableCell>
                           <TableCell>{formatSeizedDate(row.seizedAt)}</TableCell>
                           <TableCell className="text-right">
