@@ -152,10 +152,10 @@ function GoodsInformationBlock({
                 </div>
                 <div className="space-y-2 text-sm">
                   <div><span className="text-muted-foreground">Description: </span><span className="break-words font-medium">{item.description || "—"}</span></div>
-                  <div><span className="text-muted-foreground">PCT: </span>{item.pctCode || "—"}</div>
+                  <div><span className="text-muted-foreground">PCT Code: </span>{item.pctCode?.trim() || "—"}</div>
                   <div><span className="text-muted-foreground">Qty/Unit: </span>{item.quantity || "—"} / {item.unit || "—"}</div>
                   <div><span className="text-muted-foreground">Condition: </span>{item.condition || "—"}</div>
-                  <div><span className="text-muted-foreground">Assessable: </span>{item.assessableValuePkr || "—"}</div>
+                  <div><span className="text-muted-foreground">Assessable Value (PKR): </span>{item.assessableValuePkr?.trim() || "—"}</div>
                   <div><span className="text-muted-foreground">Perishable: </span>{item.perishable ? "Yes" : "No"}</div>
                   <div><span className="text-muted-foreground">ID/Chassis: </span><span className="break-words">{item.identificationRef || "—"}</span></div>
                   <div><span className="text-muted-foreground">Notes: </span><span className="break-words">{item.itemNotes || "—"}</span></div>
@@ -189,11 +189,11 @@ function GoodsInformationBlock({
                 <TableRow>
                   <TableHead> QR Code</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>PCT</TableHead>
+                  <TableHead>PCT Code</TableHead>
                   <TableHead>Qty</TableHead>
                   <TableHead>Unit</TableHead>
                   <TableHead>Condition</TableHead>
-                  <TableHead>Assessable</TableHead>
+                  <TableHead>Assessable Value (PKR)</TableHead>
                   <TableHead>Perishable</TableHead>
                   <TableHead>ID / Chassis</TableHead>
                   <TableHead>Item Notes</TableHead>
@@ -224,11 +224,11 @@ function GoodsInformationBlock({
                         </div>
                       </TableCell>
                       <TableCell className="font-medium break-words min-w-[120px]">{item.description || "—"}</TableCell>
-                      <TableCell className="font-mono break-words">{item.pctCode || "—"}</TableCell>
+                      <TableCell className="font-mono break-words">{item.pctCode?.trim() || "—"}</TableCell>
                       <TableCell>{item.quantity || "—"}</TableCell>
                       <TableCell>{item.unit || "—"}</TableCell>
                       <TableCell>{item.condition || "—"}</TableCell>
-                      <TableCell className="break-words min-w-[80px]">{item.assessableValuePkr || "—"}</TableCell>
+                      <TableCell className="break-words min-w-[80px]">{item.assessableValuePkr?.trim() || "—"}</TableCell>
                       <TableCell>{item.perishable ? "Yes" : "No"}</TableCell>
                       <TableCell className="break-words min-w-[100px]">{item.identificationRef || "—"}</TableCell>
                       <TableCell className="text-muted-foreground max-w-[150px] sm:max-w-[200px] truncate">{item.itemNotes || "—"}</TableCell>

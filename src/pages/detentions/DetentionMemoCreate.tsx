@@ -129,17 +129,16 @@ function goodsFromNoteSheet(ns: NoteSheetRecord): GoodsLineItem[] {
     .filter(
       (it) =>
         (it.product || it.description || "").trim() ||
-        it.quantity.trim() ||
-        (it.estimatedValue || it.assessableValuePkr || "").trim()
+        it.quantity.trim()
     )
     .map((it) => ({
       ...emptyGoodsItem(),
       description: it.product || it.description || "",
-      pctCode: it.pctCode || "",
+      pctCode: "",
       quantity: it.quantity || "",
       unit: it.unit?.trim() || "PCS",
       condition: it.condition || "Detained",
-      assessableValuePkr: it.estimatedValue || it.assessableValuePkr || "",
+      assessableValuePkr: "",
       identificationRef: it.identificationRef || "",
       itemNotes: it.remarks || it.itemNotes || "",
       perishable: Boolean(it.perishable),
@@ -371,11 +370,12 @@ export default function DetentionMemoCreatePage() {
         id: item.id,
         qrCodeNumber: item.qrCodeNumber,
         description: item.description,
-        pctCode: item.pctCode,
+        // PCT / assessable value are assessment-stage fields — not captured on detention memo
+        pctCode: "",
         quantity: item.quantity,
         unit: item.unit,
         condition: item.condition,
-        assessableValuePkr: item.assessableValuePkr,
+        assessableValuePkr: "",
         identificationRef: item.identificationRef,
         itemNotes: item.itemNotes,
         perishable: item.perishable,
@@ -826,11 +826,9 @@ export default function DetentionMemoCreatePage() {
                         <TableRow>
                           <TableHead className="w-[200px]">QR Code</TableHead>
                           <TableHead className="min-w-[160px]">Description of Goods *</TableHead>
-                          <TableHead className="w-[90px]">PCT Code</TableHead>
                           <TableHead className="w-[80px]">Qty</TableHead>
                           <TableHead className="w-[70px]">Unit</TableHead>
                           <TableHead className="w-[120px]">Condition</TableHead>
-                          <TableHead className="w-[110px]">Assessable Value (PKR)</TableHead>
                           <TableHead className="w-[90px]">Perishable</TableHead>
                           <TableHead className="min-w-[100px]">ID / Chassis No.</TableHead>
                           <TableHead className="min-w-[140px]">Item Notes</TableHead>
@@ -841,7 +839,7 @@ export default function DetentionMemoCreatePage() {
                       <TableBody>
                         {goodsItems.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={12} className="text-muted-foreground text-center py-6">
+                            <TableCell colSpan={10} className="text-muted-foreground text-center py-6">
                               No goods added. Click "Add line" to add seized/detained items.
                             </TableCell>
                           </TableRow>
@@ -895,13 +893,6 @@ export default function DetentionMemoCreatePage() {
                               </TableCell>
                               <TableCell>
                                 <Input
-                                  value={item.pctCode}
-                                  onChange={(e) => updateGoodsLine(item.id, "pctCode", e.target.value)}
-                                  placeholder="e.g. 8471"
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <Input
                                   type="text"
                                   inputMode="numeric"
                                   value={item.quantity}
@@ -928,13 +919,6 @@ export default function DetentionMemoCreatePage() {
                                     ))}
                                   </SelectContent>
                                 </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  value={item.assessableValuePkr}
-                                  onChange={(e) => updateGoodsLine(item.id, "assessableValuePkr", e.target.value)}
-                                  placeholder="PKR"
-                                />
                               </TableCell>
                               <TableCell className="text-center">
                                 <Checkbox

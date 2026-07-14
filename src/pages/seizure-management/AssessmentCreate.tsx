@@ -14,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { ROUTES, getSeizureMgmtAssessmentDetailPath } from "@/routes/config"
 import { fetchDetentionMemoById, fetchDetentionMemos, type DetentionMemoApiRecord } from "@/lib/detention-memo-api"
 import {
@@ -22,11 +30,18 @@ import {
   fetchAssessmentById,
   fetchAssessments,
   updateAssessment,
+  type AssessmentGoodsValuation,
   type DocumentRelevance,
 } from "@/lib/seizure-management-api"
 import { getStoredUser } from "@/lib/auth"
 import { toast } from "@/hooks/use-toast"
 import { DetentionMemoReadOnlyView } from "@/pages/seizure-management/DetentionMemoReadOnlyView"
+
+type GoodsValuationRow = AssessmentGoodsValuation & {
+  description: string
+  quantity: string
+  unit: string
+}
 
 export default function AssessmentCreatePage() {
   const navigate = useNavigate()
@@ -52,6 +67,7 @@ export default function AssessmentCreatePage() {
   const [valuationNotes, setValuationNotes] = useState("")
   const [findings, setFindings] = useState("")
   const [documentRelevance, setDocumentRelevance] = useState<DocumentRelevance>("Pending")
+  const [goodsValuation, setGoodsValuation] = useState<GoodsValuationRow[]>([])
 
   const [photos, setPhotos] = useState<File[]>([])
   const [pdfs, setPdfs] = useState<File[]>([])
@@ -72,6 +88,24 @@ export default function AssessmentCreatePage() {
     return memos.filter((m) => !assessedMemoIds.has(m.id) || m.id === detentionMemoId)
   }, [memos, assessedMemoIds, detentionMemoId, isEdit])
 
+  /** Memo with live PCT / assessable values from the assessment form so Goods Information updates as you type. */
+  const memoWithLiveValuation = useMemo(() => {
+    if (!selectedMemo) return null
+    const byId = new Map(goodsValuation.map((g) => [g.id, g]))
+    return {
+      ...selectedMemo,
+      goodsItems: (selectedMemo.goodsItems ?? []).map((item) => {
+        const live = byId.get(item.id)
+        if (!live) return item
+        return {
+          ...item,
+          pctCode: live.pctCode,
+          assessableValuePkr: live.assessableValuePkr,
+        }
+      }),
+    }
+  }, [selectedMemo, goodsValuation])
+
   useEffect(() => {
     setLoading(true)
     Promise.all([fetchDetentionMemos(), fetchAssessments()])
@@ -90,6 +124,7 @@ export default function AssessmentCreatePage() {
   useEffect(() => {
     if (!detentionMemoId) {
       setSelectedMemo(null)
+      setGoodsValuation([])
       return
     }
     let cancelled = false
@@ -99,9 +134,22 @@ export default function AssessmentCreatePage() {
         if (cancelled) return
         setSelectedMemo(m)
         setMemos((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]))
+        setGoodsValuation(
+          (m.goodsItems ?? []).map((g) => ({
+            id: g.id,
+            description: g.description || "",
+            quantity: g.quantity || "",
+            unit: g.unit || "",
+            pctCode: g.pctCode || "",
+            assessableValuePkr: g.assessableValuePkr || "",
+          }))
+        )
       })
       .catch(() => {
-        if (!cancelled) setSelectedMemo(null)
+        if (!cancelled) {
+          setSelectedMemo(null)
+          setGoodsValuation([])
+        }
       })
       .finally(() => {
         if (!cancelled) setMemoLoading(false)
@@ -158,6 +206,17 @@ export default function AssessmentCreatePage() {
     documents: otherDocs,
   }
 
+  const updateGoodsValuation = (id: string, field: "pctCode" | "assessableValuePkr", value: string) => {
+    setGoodsValuation((prev) => prev.map((row) => (row.id === id ? { ...row, [field]: value } : row)))
+  }
+
+  const goodsValuationPayload = (): AssessmentGoodsValuation[] =>
+    goodsValuation.map((row) => ({
+      id: row.id,
+      pctCode: row.pctCode.trim(),
+      assessableValuePkr: row.assessableValuePkr.trim(),
+    }))
+
   const payload = () => {
     const user = getStoredUser()
     const actor = (user?.full_name || "").trim() || user?.username?.trim() || ""
@@ -169,6 +228,7 @@ export default function AssessmentCreatePage() {
       valuationNotes,
       findings,
       documentRelevance,
+      goodsValuation: goodsValuationPayload(),
       createdBy: actor,
       updatedBy: actor,
     }
@@ -198,24 +258,12 @@ export default function AssessmentCreatePage() {
     setSaving(true)
     try {
       let id = editId || ""
+      const body = payload()
       if (isEdit && editId) {
-        await updateAssessment(editId, payload(), media)
+        await updateAssessment(editId, body, media)
         id = editId
       } else {
-        const created = await createAssessment(
-          {
-            detentionMemoId,
-            assessmentDate,
-            examiningOfficer,
-            goodsCondition,
-            valuationNotes,
-            findings,
-            documentRelevance,
-            createdBy: payload().createdBy,
-            updatedBy: payload().updatedBy,
-          },
-          media
-        )
+        const created = await createAssessment(body, media)
         id = created.id
       }
       if (andSubmit) {
@@ -238,7 +286,7 @@ export default function AssessmentCreatePage() {
   return (
     <ModulePageLayout
       title={isEdit ? "Edit Assessment" : "Create Assessment"}
-      description="Record examination findings, upload documents, then save draft or send for approval."
+      description="Record examination findings, PCT codes, assessable values, upload documents, then save draft or send for approval."
       breadcrumbs={[
         { label: "Seizure Management", href: ROUTES.SEIZURE_MANAGEMENT },
         { label: "Assessment", href: ROUTES.SEIZURE_MGMT_ASSESSMENT },
@@ -314,8 +362,8 @@ export default function AssessmentCreatePage() {
                   Loading detention memo…
                 </CardContent>
               </Card>
-            ) : selectedMemo ? (
-              <DetentionMemoReadOnlyView memo={selectedMemo} />
+            ) : memoWithLiveValuation ? (
+              <DetentionMemoReadOnlyView memo={memoWithLiveValuation} />
             ) : (
               <Card>
                 <CardContent className="py-6 text-sm text-destructive">
@@ -328,7 +376,63 @@ export default function AssessmentCreatePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">2. Examination Findings</CardTitle>
+            <CardTitle className="text-base">2. Goods Valuation (Assessment)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Enter <strong>PCT Code</strong> and <strong>Assessable Value (PKR)</strong> for each goods line during
+              assessment.
+            </p>
+            {!detentionMemoId ? (
+              <p className="text-sm text-muted-foreground">Select a detention memo to load goods.</p>
+            ) : goodsValuation.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {memoLoading ? "Loading goods…" : "No goods lines on this detention memo."}
+              </p>
+            ) : (
+              <div className="overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[180px]">Description</TableHead>
+                      <TableHead className="w-[90px]">Qty</TableHead>
+                      <TableHead className="w-[70px]">Unit</TableHead>
+                      <TableHead className="w-[120px]">PCT Code</TableHead>
+                      <TableHead className="w-[160px]">Assessable Value (PKR)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {goodsValuation.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="font-medium">{row.description || "—"}</TableCell>
+                        <TableCell>{row.quantity || "—"}</TableCell>
+                        <TableCell>{row.unit || "—"}</TableCell>
+                        <TableCell>
+                          <Input
+                            value={row.pctCode}
+                            onChange={(e) => updateGoodsValuation(row.id, "pctCode", e.target.value)}
+                            placeholder="e.g. 8471"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={row.assessableValuePkr}
+                            onChange={(e) => updateGoodsValuation(row.id, "assessableValuePkr", e.target.value)}
+                            placeholder="e.g. 5400000"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">3. Examination Findings</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-2">
@@ -378,7 +482,7 @@ export default function AssessmentCreatePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">3. Upload Supporting Documents</CardTitle>
+            <CardTitle className="text-base">4. Upload Supporting Documents</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             {existingAttachmentCount > 0 && (
@@ -433,7 +537,7 @@ export default function AssessmentCreatePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">4. Approval Workflow</CardTitle>
+            <CardTitle className="text-base">5. Approval Workflow</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">

@@ -164,6 +164,12 @@ export type DetentionAssessmentAttachment = {
   uploadedAt: string
 }
 
+export type AssessmentGoodsValuation = {
+  id: string
+  pctCode: string
+  assessableValuePkr: string
+}
+
 export type DetentionAssessmentRecord = {
   id: string
   detentionMemoId: string
@@ -335,12 +341,13 @@ function serializeNoteSheetItems(items?: NoteSheetItem[]) {
     qrCodeNumber: it.qrCodeNumber || "",
     product: it.product || it.description || "",
     description: it.description || it.product || "",
-    pctCode: it.pctCode || "",
+    // PCT / assessable value are assessment-stage fields — not captured on note sheet
+    pctCode: "",
     quantity: it.quantity || "",
     unit: it.unit || "",
     condition: it.condition || "",
-    estimatedValue: it.estimatedValue || it.assessableValuePkr || "",
-    assessableValuePkr: it.assessableValuePkr || it.estimatedValue || "",
+    estimatedValue: "",
+    assessableValuePkr: "",
     perishable: Boolean(it.perishable),
     identificationRef: it.identificationRef || "",
     remarks: it.remarks || it.itemNotes || "",
@@ -554,7 +561,10 @@ function appendAssessmentMedia(form: FormData, media?: AssessmentUploadMedia) {
 }
 
 export async function createAssessment(
-  payload: Partial<DetentionAssessmentRecord> & { detentionMemoId: string },
+  payload: Partial<DetentionAssessmentRecord> & {
+    detentionMemoId: string
+    goodsValuation?: AssessmentGoodsValuation[]
+  },
   media?: AssessmentUploadMedia
 ): Promise<DetentionAssessmentRecord> {
   if (!assessmentHasMedia(media)) {
@@ -582,7 +592,7 @@ export async function createAssessment(
 
 export async function updateAssessment(
   id: string,
-  payload: Partial<DetentionAssessmentRecord>,
+  payload: Partial<DetentionAssessmentRecord> & { goodsValuation?: AssessmentGoodsValuation[] },
   media?: AssessmentUploadMedia
 ): Promise<DetentionAssessmentRecord> {
   if (!assessmentHasMedia(media)) {
