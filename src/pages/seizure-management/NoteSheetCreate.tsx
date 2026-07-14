@@ -344,9 +344,7 @@ export default function NoteSheetCreatePage() {
         const hasContent =
           it.product.trim() ||
           it.quantity.trim() ||
-          it.estimatedValue.trim() ||
           it.remarks.trim() ||
-          it.pctCode.trim() ||
           it.identificationRef.trim() ||
           (it.imageFiles?.length ?? 0) > 0 ||
           (it.images?.length ?? 0) > 0
@@ -648,11 +646,9 @@ export default function NoteSheetCreatePage() {
                       <TableRow>
                         <TableHead className="w-[120px]">QR Code</TableHead>
                         <TableHead className="min-w-[160px]">Description of Goods *</TableHead>
-                        <TableHead className="w-[90px]">PCT Code</TableHead>
                         <TableHead className="w-[120px]">Qty</TableHead>
                         <TableHead className="w-[70px]">Unit</TableHead>
                         <TableHead className="w-[120px]">Condition</TableHead>
-                        <TableHead className="w-[110px]">Assessable Value (PKR)</TableHead>
                         <TableHead className="w-[90px]">Perishable</TableHead>
                         <TableHead className="min-w-[100px]">ID / Chassis No.</TableHead>
                         <TableHead className="min-w-[140px]">Item Notes</TableHead>
@@ -663,7 +659,7 @@ export default function NoteSheetCreatePage() {
                     <TableBody>
                       {items.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={12} className="text-muted-foreground text-center py-6">
+                          <TableCell colSpan={10} className="text-muted-foreground text-center py-6">
                             No goods added. Click &quot;Add line&quot; to add seized/detained items.
                           </TableCell>
                         </TableRow>
@@ -716,13 +712,6 @@ export default function NoteSheetCreatePage() {
                             </TableCell>
                             <TableCell>
                               <Input
-                                value={row.pctCode}
-                                onChange={(e) => updateItem(index, "pctCode", e.target.value)}
-                                placeholder="e.g. 8471"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
                                 value={row.quantity}
                                 onChange={(e) => updateItem(index, "quantity", e.target.value)}
                                 placeholder="Qty"
@@ -759,13 +748,6 @@ export default function NoteSheetCreatePage() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={row.estimatedValue}
-                                onChange={(e) => updateItem(index, "estimatedValue", e.target.value)}
-                                placeholder="PKR"
-                              />
                             </TableCell>
                             <TableCell className="text-center">
                               <Checkbox

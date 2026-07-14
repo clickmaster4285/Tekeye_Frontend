@@ -351,11 +351,9 @@ export default function NoteSheetDetailPage() {
                     <TableRow>
                       <TableHead>QR Code</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>PCT Code</TableHead>
                       <TableHead>Qty</TableHead>
                       <TableHead>Unit</TableHead>
                       <TableHead>Condition</TableHead>
-                      <TableHead>Assessable Value (PKR)</TableHead>
                       <TableHead>Perishable</TableHead>
                       <TableHead>ID / Chassis No.</TableHead>
                       <TableHead>Item Notes</TableHead>
@@ -367,11 +365,9 @@ export default function NoteSheetDetailPage() {
                       <TableRow key={item.id ?? i}>
                         <TableCell className="font-mono text-xs">{item.qrCodeNumber || "—"}</TableCell>
                         <TableCell>{item.product || item.description || "—"}</TableCell>
-                        <TableCell>{item.pctCode || "—"}</TableCell>
                         <TableCell>{item.quantity || "—"}</TableCell>
                         <TableCell>{item.unit || "—"}</TableCell>
                         <TableCell>{item.condition || "—"}</TableCell>
-                        <TableCell>{item.estimatedValue || item.assessableValuePkr || "—"}</TableCell>
                         <TableCell>{item.perishable ? "Yes" : "No"}</TableCell>
                         <TableCell>{item.identificationRef || "—"}</TableCell>
                         <TableCell>{item.remarks || item.itemNotes || "—"}</TableCell>

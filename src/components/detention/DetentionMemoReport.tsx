@@ -77,10 +77,11 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
     const goodsItems = row.goodsItems ?? []
     const hasGoods = goodsItems.length > 0
     const showPctCode = goodsItems.some((item) => Boolean(item.pctCode?.trim()))
+    const showAssessable = goodsItems.some((item) => Boolean(item.assessableValuePkr?.trim()))
     const showPerishable = goodsItems.some((item) => Boolean(item.perishable))
     const showIdentificationRef = goodsItems.some((item) => Boolean(item.identificationRef?.trim()))
     const showNotes = goodsItems.some((item) => Boolean(item.itemNotes?.trim()))
-    const optionalCols = [showPctCode, showPerishable, showIdentificationRef, showNotes].filter(Boolean).length
+    const optionalCols = [showPctCode, showAssessable, showPerishable, showIdentificationRef, showNotes].filter(Boolean).length
     const useLandscape = optionalCols >= 2 || goodsItems.length > 8
 
     const handlePrint = () => {
@@ -462,7 +463,7 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                                     <th style={{ width: "48px" }}>Qty</th>
                                     <th style={{ width: "42px" }}>Unit</th>
                                     <th style={{ width: "72px" }}>Condition</th>
-                                    <th style={{ width: "78px" }}>Value (PKR)</th>
+                                    {showAssessable && <th style={{ width: "78px" }}>Value (PKR)</th>}
                                     {showPctCode && <th style={{ width: "64px" }}>PCT</th>}
                                     {showPerishable && <th style={{ width: "52px" }}>Perish.</th>}
                                     {showIdentificationRef && <th style={{ width: "88px" }}>ID/Chassis</th>}
@@ -486,7 +487,7 @@ export default function DetentionMemoReport({ row, qrPayload, qrNumber }: Detent
                                         <td>{item.quantity || "—"}</td>
                                         <td>{item.unit || "—"}</td>
                                         <td>{item.condition || "—"}</td>
-                                        <td>{item.assessableValuePkr || "—"}</td>
+                                        {showAssessable && <td>{item.assessableValuePkr || "—"}</td>}
                                         {showPctCode && <td>{item.pctCode || "—"}</td>}
                                         {showPerishable && <td>{item.perishable ? "Yes" : "No"}</td>}
                                         {showIdentificationRef && <td>{item.identificationRef || "—"}</td>}

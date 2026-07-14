@@ -226,11 +226,11 @@ export function DetentionMemoReadOnlyView({ memo }: { memo: DetentionMemoApiReco
                     <TableRow>
                       <TableHead>QR Code</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>PCT</TableHead>
+                      <TableHead>PCT Code</TableHead>
                       <TableHead>Qty</TableHead>
                       <TableHead>Unit</TableHead>
                       <TableHead>Condition</TableHead>
-                      <TableHead>Assessable</TableHead>
+                      <TableHead>Assessable Value (PKR)</TableHead>
                       <TableHead>Perishable</TableHead>
                       <TableHead>ID / Chassis</TableHead>
                       <TableHead>Item Notes</TableHead>
@@ -255,11 +255,11 @@ export function DetentionMemoReadOnlyView({ memo }: { memo: DetentionMemoApiReco
                         <TableCell className="font-medium break-words min-w-[120px]">
                           {item.description || "—"}
                         </TableCell>
-                        <TableCell className="font-mono">{item.pctCode || "—"}</TableCell>
+                        <TableCell className="font-mono">{item.pctCode?.trim() || "—"}</TableCell>
                         <TableCell>{item.quantity || "—"}</TableCell>
                         <TableCell>{item.unit || "—"}</TableCell>
                         <TableCell>{item.condition || "—"}</TableCell>
-                        <TableCell>{item.assessableValuePkr || "—"}</TableCell>
+                        <TableCell>{item.assessableValuePkr?.trim() || "—"}</TableCell>
                         <TableCell>{item.perishable ? "Yes" : "No"}</TableCell>
                         <TableCell>{item.identificationRef || "—"}</TableCell>
                         <TableCell className="text-muted-foreground max-w-[200px] truncate">

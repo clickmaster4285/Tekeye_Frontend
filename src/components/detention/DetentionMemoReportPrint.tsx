@@ -71,6 +71,7 @@ export default function DetentionMemoReportPrint({ row, qrPayload, qrNumber }: D
   const goodsItems = row.goodsItems ?? []
   const hasGoods = goodsItems.length > 0
   const showPctCode = goodsItems.some((item) => Boolean(item.pctCode?.trim()))
+  const showAssessable = goodsItems.some((item) => Boolean(item.assessableValuePkr?.trim()))
   const showPerishable = goodsItems.some((item) => Boolean(item.perishable))
   const showIdentificationRef = goodsItems.some((item) => Boolean(item.identificationRef?.trim()))
   const showNotes = goodsItems.some((item) => Boolean(item.itemNotes?.trim()))
@@ -370,7 +371,7 @@ export default function DetentionMemoReportPrint({ row, qrPayload, qrNumber }: D
                         <th style={{ width: "44px" }}>Qty</th>
                         <th style={{ width: "40px" }}>Unit</th>
                         <th style={{ width: "74px" }}>Condition</th>
-                        <th style={{ width: "80px" }}>Assessable (PKR)</th>
+                        {showAssessable && <th style={{ width: "80px" }}>Assessable (PKR)</th>}
                         {showPctCode && <th style={{ width: "62px" }}>PCT</th>}
                         {showPerishable && <th style={{ width: "52px" }}>Perish.</th>}
                         {showIdentificationRef && <th style={{ width: "90px" }}>ID/Chassis</th>}
@@ -396,7 +397,7 @@ export default function DetentionMemoReportPrint({ row, qrPayload, qrNumber }: D
                           <td>{item.quantity || "—"}</td>
                           <td>{item.unit || "—"}</td>
                           <td>{item.condition || "—"}</td>
-                          <td>{item.assessableValuePkr || "—"}</td>
+                          {showAssessable && <td>{item.assessableValuePkr || "—"}</td>}
                           {showPctCode && <td>{item.pctCode || "—"}</td>}
                           {showPerishable && <td>{item.perishable ? "Yes" : "No"}</td>}
                           {showIdentificationRef && <td>{item.identificationRef || "—"}</td>}
