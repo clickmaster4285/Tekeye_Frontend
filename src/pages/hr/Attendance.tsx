@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Clock, LogIn, UserCheck, Calendar, Camera, Eye, Edit, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Clock, LogIn, UserCheck, Calendar, Camera, Eye, Edit, Trash2, FileDown } from "lucide-react"
 import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -39,6 +39,16 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { CameraCapture } from "@/components/camera-capture"
+import {
+  AttendancePdfReport,
+  attendancePersonKey,
+  buildAttendancePdfPages,
+  downloadAttendancePdf,
+  filterAttendanceByPeriod,
+  formatWorkingTime,
+  periodLabel,
+  type AttendancePeriod,
+} from "@/components/hr/attendance-pdf-report"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredUser } from "@/lib/auth"
 import { fetchStaff, type StaffRecord } from "@/lib/staff-api"
@@ -107,6 +117,12 @@ export default function AttendancePage() {
   const [markError, setMarkError] = useState<string | null>(null)
   const [marking, setMarking] = useState(false)
   const [filterDate, setFilterDate] = useState<string>(() => new Date().toISOString().slice(0, 10))
+  const [period, setPeriod] = useState<AttendancePeriod>("day")
+  const [selectedPersonKey, setSelectedPersonKey] = useState<string>("all")
+  /** Drives the hidden PDF DOM (may briefly differ from table filter during export). */
+  const [pdfExportPersonKey, setPdfExportPersonKey] = useState<string>("all")
+  const [pdfExporting, setPdfExporting] = useState(false)
+  const pdfReportRef = useRef<HTMLDivElement>(null)
   const [viewRecord, setViewRecord] = useState<AttendanceRecord | null>(null)
   const [viewLoading, setViewLoading] = useState(false)
   const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null)
@@ -140,10 +156,45 @@ export default function AttendancePage() {
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const presentToday = attendance.filter((r) => r.check_in && r.date === todayStr).length
-  const filteredAttendance = filterDate
-    ? attendance.filter((r) => r.date === filterDate)
-    : attendance
+  const periodAttendance = useMemo(
+    () => filterAttendanceByPeriod(attendance, period, filterDate),
+    [attendance, period, filterDate]
+  )
+  const personOptions = useMemo(() => {
+    const pages = buildAttendancePdfPages(periodAttendance, staff)
+    return pages.map((p) => ({ key: p.key, name: p.name }))
+  }, [periodAttendance, staff])
+
+  useEffect(() => {
+    if (selectedPersonKey === "all") return
+    if (!personOptions.some((p) => p.key === selectedPersonKey)) {
+      setSelectedPersonKey("all")
+    }
+  }, [personOptions, selectedPersonKey])
+
+  useEffect(() => {
+    if (!pdfExporting) setPdfExportPersonKey(selectedPersonKey)
+  }, [selectedPersonKey, pdfExporting])
+
+  const filteredAttendance = useMemo(() => {
+    if (selectedPersonKey === "all") return periodAttendance
+    return periodAttendance.filter((r) => attendancePersonKey(r) === selectedPersonKey)
+  }, [periodAttendance, selectedPersonKey])
+
+  const pdfSourceAttendance = useMemo(() => {
+    if (pdfExportPersonKey === "all") return periodAttendance
+    return periodAttendance.filter((r) => attendancePersonKey(r) === pdfExportPersonKey)
+  }, [periodAttendance, pdfExportPersonKey])
+
   const thisMonth = attendance.filter((r) => r.date?.startsWith(todayStr.slice(0, 7))).length
+  const pdfPages = useMemo(
+    () => buildAttendancePdfPages(pdfSourceAttendance, staff),
+    [pdfSourceAttendance, staff]
+  )
+  const selectedPersonName =
+    selectedPersonKey === "all"
+      ? null
+      : personOptions.find((p) => p.key === selectedPersonKey)?.name ?? null
 
   const handleExport = () => {
     const rows = filteredAttendance.map((r) => ({
@@ -158,9 +209,63 @@ export default function AttendancePage() {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
     const a = document.createElement("a")
     a.href = URL.createObjectURL(blob)
-    a.download = `attendance-${filterDate || "all"}.csv`
+    const personSlug = selectedPersonName
+      ? selectedPersonName.replace(/[^a-zA-Z0-9-_]+/g, "_")
+      : "all"
+    a.download = `attendance-${period}-${filterDate}-${personSlug}.csv`
     a.click()
     URL.revokeObjectURL(a.href)
+  }
+
+  const handleExportPdf = async (personKey?: string) => {
+    const targetKey = personKey ?? selectedPersonKey
+    const recordsForPdf =
+      targetKey === "all"
+        ? periodAttendance
+        : periodAttendance.filter((r) => attendancePersonKey(r) === targetKey)
+
+    if (recordsForPdf.length === 0) {
+      toast({
+        title: "No records to export",
+        description: "Change the period, date, or person and try again.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const personLabel =
+      targetKey === "all"
+        ? "all"
+        : (personOptions.find((p) => p.key === targetKey)?.name ?? "person").replace(
+            /[^a-zA-Z0-9-_]+/g,
+            "_"
+          )
+
+    setPdfExporting(true)
+    setPdfExportPersonKey(targetKey)
+    try {
+      // Wait for React to render the filtered PDF pages
+      await new Promise((r) => setTimeout(r, 350))
+      const el = pdfReportRef.current
+      if (!el) throw new Error("PDF report not ready")
+      await downloadAttendancePdf(el, `attendance-${period}-${filterDate}-${personLabel}.pdf`)
+      toast({
+        title: "PDF downloaded",
+        description:
+          targetKey === "all"
+            ? periodLabel(period, filterDate)
+            : `${personOptions.find((p) => p.key === targetKey)?.name ?? "Person"} · ${periodLabel(period, filterDate)}`,
+      })
+    } catch (err) {
+      toast({
+        title: "PDF export failed",
+        description: err instanceof Error ? err.message : "Could not generate PDF",
+        variant: "destructive",
+      })
+    } finally {
+      setPdfExporting(false)
+      setPdfExportPersonKey(selectedPersonKey)
+    }
   }
 
   const handleView = (row: AttendanceRecord) => {
@@ -482,18 +587,70 @@ export default function AttendancePage() {
         <Card className="w-full min-w-0">
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <CardTitle>Today&apos;s Attendance</CardTitle>
-              <CardDescription>Check-in and check-out log for current day</CardDescription>
+              <CardTitle>
+                {period === "day"
+                  ? "Day Attendance"
+                  : period === "week"
+                    ? "Week Attendance"
+                    : "Month Attendance"}
+              </CardTitle>
+              <CardDescription>
+                {periodLabel(period, filterDate)}
+                {selectedPersonName ? ` · ${selectedPersonName}` : ""}
+              </CardDescription>
             </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+              <Select value={period} onValueChange={(v) => setPeriod(v as AttendancePeriod)}>
+                <SelectTrigger className="w-full sm:w-36">
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="day">1 Day</SelectItem>
+                  <SelectItem value="week">1 Week</SelectItem>
+                  <SelectItem value="month">1 Month</SelectItem>
+                </SelectContent>
+              </Select>
               <Input
                 type="date"
                 className="w-full sm:w-40"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
+                title={
+                  period === "day"
+                    ? "Select day"
+                    : period === "week"
+                      ? "Any date in the week"
+                      : "Any date in the month"
+                }
               />
+              <Select value={selectedPersonKey} onValueChange={setSelectedPersonKey}>
+                <SelectTrigger className="w-full sm:w-52">
+                  <SelectValue placeholder="Select person" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All employees</SelectItem>
+                  {personOptions.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto">
                 Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => void handleExportPdf()}
+                disabled={pdfExporting || periodAttendance.length === 0}
+                className="w-full sm:w-auto"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {pdfExporting
+                  ? "Preparing PDF…"
+                  : selectedPersonKey === "all"
+                    ? "Download PDF (all)"
+                    : "Download PDF"}
               </Button>
             </div>
           </CardHeader>
@@ -505,14 +662,14 @@ export default function AttendancePage() {
               <p className="text-sm text-muted-foreground py-8">Loading attendance…</p>
             ) : (
             <div className="w-full max-w-full overflow-x-auto rounded-lg border pb-2">
-            <Table className="min-w-[860px]">
+            <Table className="min-w-[960px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Employee</TableHead>
-                  <TableHead>Username</TableHead>
                   <TableHead>Check-in</TableHead>
                   <TableHead>Check-out</TableHead>
+                  <TableHead>Working time</TableHead>
                   <TableHead>Clip</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
@@ -521,10 +678,10 @@ export default function AttendancePage() {
               <TableBody>
                 {filteredAttendance.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       {attendance.length === 0
                         ? "No attendance records yet."
-                        : `No records for ${filterDate}. Change the date or export all.`}
+                        : `No records for ${periodLabel(period, filterDate)}. Change the period or date.`}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -534,9 +691,11 @@ export default function AttendancePage() {
                       <TableRow key={row.id}>
                         <TableCell className="font-mono text-muted-foreground">{row.date}</TableCell>
                         <TableCell className="font-medium">{row.staff_name ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">{row.username ?? "—"}</TableCell>
                         <TableCell>{formatTime(row.check_in)}</TableCell>
                         <TableCell>{formatTime(row.check_out)}</TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {formatWorkingTime(row.check_in, row.check_out)}
+                        </TableCell>
                         <TableCell>
                           {row.video ? (
                             <video
@@ -582,6 +741,16 @@ export default function AttendancePage() {
                               onClick={() => handleView(row)}
                             >
                               <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-indigo-600"
+                              title="Download this person's PDF"
+                              disabled={pdfExporting}
+                              onClick={() => void handleExportPdf(attendancePersonKey(row))}
+                            >
+                              <FileDown className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -751,6 +920,15 @@ export default function AttendancePage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {(pdfPages.length > 0 || pdfExporting) && (
+          <AttendancePdfReport
+            pages={pdfPages}
+            period={period}
+            anchorDate={filterDate}
+            reportRef={pdfReportRef}
+          />
+        )}
       </div>
     </ModulePageLayout>
   )
