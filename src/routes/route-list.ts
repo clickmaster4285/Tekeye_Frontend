@@ -138,6 +138,7 @@ export const DASHBOARD_ROUTES: { index?: true; path?: string; page: string }[] =
   { path: toChildPath(ROUTES.ANALYTICS_CAMERA_MANAGEMENT), page: "AnalyticsCameraManagement" },
   { path: toChildPath(ROUTES.OBJECT_DETECTION), page: "ObjectDetection" },
   { path: toChildPath(ROUTES.PERSON_JOURNEY), page: "PersonJourney" },
+  { path: "person-journey/:uuid", page: "PersonJourneyDetail" },
   { path: toChildPath(ROUTES.ANPR_SETTINGS), page: "AnprSettings" },
   { path: toChildPath(ROUTES.ANOMALY_DETECTION), page: "AnomalyDetection" },
   // Reports

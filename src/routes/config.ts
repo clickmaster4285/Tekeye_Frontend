@@ -80,6 +80,7 @@ export const ROUTES = {
   ANALYTICS_CAMERA_MANAGEMENT_VIEW: "/analytics/camera-management/:id",
   OBJECT_DETECTION: "/object-detection",
   PERSON_JOURNEY: "/person-journey",
+  PERSON_JOURNEY_DETAIL: "/person-journey/:uuid",
   ANPR_SETTINGS: "/anpr-settings",
   ANOMALY_DETECTION: "/anomaly-detection",
 
