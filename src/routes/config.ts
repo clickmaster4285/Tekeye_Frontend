@@ -80,6 +80,7 @@ export const ROUTES = {
   ANALYTICS_CAMERA_MANAGEMENT_VIEW: "/analytics/camera-management/:id",
   OBJECT_DETECTION: "/object-detection",
   PERSON_JOURNEY: "/person-journey",
+  PERSON_JOURNEY_DETAIL: "/person-journey/:uuid",
   ANPR_SETTINGS: "/anpr-settings",
   ANOMALY_DETECTION: "/anomaly-detection",
 
@@ -169,6 +170,10 @@ export const ROUTES = {
   /** Path for employee detail; use getEmployeeDetailPath(id) for links */
   EMPLOYEE_DETAIL: "/employees/:id",
   ATTENDANCE: "/attendance",
+  FACE_ENROLLMENT: "/attendance/enrollment",
+  ATTENDANCE_MONITOR: "/attendance/monitor",
+  ATTENDANCE_DASHBOARD: "/attendance/dashboard",
+  ATTENDANCE_REPORTS: "/attendance/reports",
   LEAVE_MANAGEMENT: "/leave-management",
   PAYROLL: "/payroll",
 
@@ -511,7 +516,11 @@ const ALL_NAV_ITEMS: (NavItem | NavGroup)[] = [
     label: "Human Resource",
     children: [
       { label: "Employees", href: ROUTES.EMPLOYEES },
+      { label: "Face Enrollment", href: ROUTES.FACE_ENROLLMENT },
+      { label: "Attendance Monitor", href: ROUTES.ATTENDANCE_MONITOR },
+      { label: "Attendance Dashboard", href: ROUTES.ATTENDANCE_DASHBOARD },
       { label: "Attendance", href: ROUTES.ATTENDANCE },
+      { label: "Attendance Reports", href: ROUTES.ATTENDANCE_REPORTS },
       { label: "Leave", href: ROUTES.LEAVE_MANAGEMENT },
       { label: "Payroll", href: ROUTES.PAYROLL },
       { label: "Recruitment", href: ROUTES.RECRUITMENT },
@@ -797,6 +806,16 @@ export const IT_ADMIN_NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Roles & Permissions", href: ROUTES.USER_ROLE_MANAGEMENT },
       { label: "Logs", href: ROUTES.LOGS },
+    ],
+  },
+  {
+    title: "Attendance",
+    items: [
+      { label: "Face Enrollment", href: ROUTES.FACE_ENROLLMENT },
+      { label: "Attendance Monitor", href: ROUTES.ATTENDANCE_MONITOR },
+      { label: "Attendance Dashboard", href: ROUTES.ATTENDANCE_DASHBOARD },
+      { label: "Attendance", href: ROUTES.ATTENDANCE },
+      { label: "Attendance Reports", href: ROUTES.ATTENDANCE_REPORTS },
     ],
   },
 ]

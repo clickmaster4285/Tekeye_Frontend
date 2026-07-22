@@ -27,6 +27,7 @@ import {
   Package,
   Play,
   Scale,
+  ScanFace,
   Shield,
   ShieldCheck,
   Smartphone,
@@ -104,6 +105,10 @@ const EXPLICIT_SUBMENU_ICONS: Record<string, SidebarIconComponent> = {
   "User Management": Users,
   Employees: Users,
   Attendance: UserCheck,
+  "Face Enrollment": ScanFace,
+  "Attendance Monitor": Monitor,
+  "Attendance Dashboard": LayoutDashboard,
+  "Attendance Reports": BarChart3,
   Notifications: Bell,
   // Table of Contents & AI Analytics sub-modules
   "Table of Contents": List,

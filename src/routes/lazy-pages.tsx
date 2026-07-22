@@ -170,7 +170,10 @@ export const PAGES = {
     }))
   ),
   ObjectDetection: lazy(() => import("@/pages/cameras/ObjectDetection").then((m) => ({ default: m.default }))),
-  // PersonJourney: lazy(() => import("@/pages/cameras/PersonJourney").then((m) => ({ default: m.default }))),
+  PersonJourney: lazy(() => import("@/pages/operations/PersonJourney").then((m) => ({ default: m.default }))),
+  PersonJourneyDetail: lazy(() =>
+    import("@/pages/operations/PersonJourneyDetail").then((m) => ({ default: m.default }))
+  ),
   AnprSettings: lazy(() => import("@/pages/cameras/AnprSettings").then((m) => ({ default: m.default }))),
   AnomalyDetection: lazy(() => import("@/pages/cameras/AnomalyDetection").then((m) => ({ default: m.default }))),
   Reports: lazy(() => import("@/pages/reports/Reports").then((m) => ({ default: m.default }))),
@@ -181,6 +184,10 @@ export const PAGES = {
   EmployeeDetail: lazy(() => import("@/pages/hr/EmployeeDetail").then((m) => ({ default: m.default }))),
   EmployeeEdit: lazy(() => import("@/pages/hr/EmployeeEdit").then((m) => ({ default: m.default }))),
   Attendance: lazy(() => import("@/pages/hr/Attendance").then((m) => ({ default: m.default }))),
+  FaceEnrollment: lazy(() => import("@/pages/hr/FaceEnrollment").then((m) => ({ default: m.default }))),
+  AttendanceMonitor: lazy(() => import("@/pages/hr/AttendanceMonitor").then((m) => ({ default: m.default }))),
+  AttendanceDashboard: lazy(() => import("@/pages/hr/AttendanceDashboard").then((m) => ({ default: m.default }))),
+  AttendanceReports: lazy(() => import("@/pages/hr/AttendanceReports").then((m) => ({ default: m.default }))),
   LeaveManagement: lazy(() => import("@/pages/hr/LeaveManagement").then((m) => ({ default: m.default }))),
   Payroll: lazy(() => import("@/pages/hr/Payroll").then((m) => ({ default: m.default }))),
   GeneralSettings: lazy(() => import("@/pages/settings/GeneralSettings").then((m) => ({ default: m.default }))),
