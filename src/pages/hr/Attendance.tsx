@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { Link } from "react-router-dom"
 import { Clock, LogIn, UserCheck, Calendar, Camera, Eye, Edit, Trash2, FileDown } from "lucide-react"
 import { ModulePageLayout } from "@/components/dashboard/module-page-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -65,6 +66,7 @@ import {
   type AttendanceRecord,
 } from "@/lib/attendance-api"
 import { fetchMLHealth, type MLHealthResponse } from "@/lib/ml-api"
+import { ROUTES } from "@/routes/config"
 
 function formatTime(iso: string | null): string {
   if (!iso) return "—"
@@ -77,6 +79,10 @@ function formatTime(iso: string | null): string {
 }
 
 function statusFromRecord(r: AttendanceRecord): string {
+  if (r.status === "late") return "Late"
+  if (r.status === "present") return "Present"
+  if (r.status === "half_day") return "Half day"
+  if (r.status === "absent") return "Absent"
   if (r.check_in && r.check_out) return "Present"
   if (r.check_in) return "Present"
   return "Absent"
@@ -407,8 +413,24 @@ export default function AttendancePage() {
   return (
     <ModulePageLayout
       title="Attendance"
-      description="Track check-in/check-out and daily attendance records."
+      description="InsightFace check-in/out records, face enrollment, CCTV monitor, and reports."
       breadcrumbs={[{ label: "HR" }, { label: "Attendance" }]}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to={ROUTES.FACE_ENROLLMENT}>Face Enrollment</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to={ROUTES.ATTENDANCE_MONITOR}>Monitor</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to={ROUTES.ATTENDANCE_DASHBOARD}>Dashboard</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to={ROUTES.ATTENDANCE_REPORTS}>Reports</Link>
+          </Button>
+        </div>
+      }
     >
       <div className="grid gap-6">
         <div className="grid gap-4 md:grid-cols-4">
@@ -672,13 +694,14 @@ export default function AttendancePage() {
                   <TableHead>Working time</TableHead>
                   <TableHead>Clip</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Source</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredAttendance.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                       {attendance.length === 0
                         ? "No attendance records yet."
                         : `No records for ${periodLabel(period, filterDate)}. Change the period or date.`}
@@ -725,11 +748,14 @@ export default function AttendancePage() {
                         <TableCell>
                           <Badge
                             variant={
-                              status === "Present" ? "default" : "outline"
+                              status === "Present" ? "default" : status === "Late" ? "secondary" : "outline"
                             }
                           >
                             {status}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="capitalize text-muted-foreground text-sm">
+                          {row.source || "—"}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">

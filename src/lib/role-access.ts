@@ -359,6 +359,12 @@ const ROLE_PATH_RULES: Record<RestrictedRole, PathRule> = {
       ROUTES.EDIT_USER,
       ROUTES.LOGS,
       ROUTES.ACTIVITY_LOGS,
+      // Attendance APIs use IsAdminOrHR (includes IT_ADMIN)
+      ROUTES.ATTENDANCE,
+      ROUTES.FACE_ENROLLMENT,
+      ROUTES.ATTENDANCE_MONITOR,
+      ROUTES.ATTENDANCE_DASHBOARD,
+      ROUTES.ATTENDANCE_REPORTS,
     ],
     patterns: [
       /^\/settings\/users\/[^/]+$/,
@@ -412,6 +418,10 @@ const ROLE_PATH_RULES: Record<RestrictedRole, PathRule> = {
       ROUTES.EMPLOYEES,
       ROUTES.ADD_STAFF,
       ROUTES.ATTENDANCE,
+      ROUTES.FACE_ENROLLMENT,
+      ROUTES.ATTENDANCE_MONITOR,
+      ROUTES.ATTENDANCE_DASHBOARD,
+      ROUTES.ATTENDANCE_REPORTS,
       ROUTES.LEAVE_MANAGEMENT,
       ROUTES.PAYROLL,
       ROUTES.RECRUITMENT,

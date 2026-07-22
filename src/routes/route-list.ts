@@ -161,6 +161,10 @@ export const DASHBOARD_ROUTES: { index?: true; path?: string; page: string }[] =
   { path: "employees/:id", page: "EmployeeDetail" },
   { path: "employees/:id/edit", page: "EmployeeEdit" },
   { path: toChildPath(ROUTES.ATTENDANCE), page: "Attendance" },
+  { path: toChildPath(ROUTES.FACE_ENROLLMENT), page: "FaceEnrollment" },
+  { path: toChildPath(ROUTES.ATTENDANCE_MONITOR), page: "AttendanceMonitor" },
+  { path: toChildPath(ROUTES.ATTENDANCE_DASHBOARD), page: "AttendanceDashboard" },
+  { path: toChildPath(ROUTES.ATTENDANCE_REPORTS), page: "AttendanceReports" },
   { path: toChildPath(ROUTES.LEAVE_MANAGEMENT), page: "LeaveManagement" },
   { path: toChildPath(ROUTES.PAYROLL), page: "Payroll" },
   // Settings
